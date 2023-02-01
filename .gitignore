@@ -1,0 +1,15 @@
+*.iml
+.gradle
+android/Hermes/local.properties
+android/Hermes/.idea/caches
+android/Hermes/.idea/libraries
+android/Hermes/.idea/modules.xml
+android/Hermes/.idea/workspace.xml
+android/Hermes/.idea/navEditor.xml
+android/Hermes/.idea/assetWizardSettings.xml
+android/Hermes.DS_Store
+android/Hermes/build
+android/Hermes/captures
+.externalNativeBuild
+.cxx
+local.properties
