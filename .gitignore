@@ -13,3 +13,9 @@ android/Hermes/captures
 .externalNativeBuild
 .cxx
 local.properties
+android/Hermes/.idea/vcs.xml
+android/Hermes/.idea/misc.xml
+android/Hermes/.idea/gradle.xml
+android/Hermes/.idea/compiler.xml
+android/Hermes/app/src/test/*
+android/Hermes/app/src/androidTest/*
