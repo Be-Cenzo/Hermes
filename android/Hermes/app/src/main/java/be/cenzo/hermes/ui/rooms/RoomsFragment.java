@@ -48,6 +48,7 @@ import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.FormBody;
 import okhttp3.Headers;
+import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
@@ -55,6 +56,10 @@ import okhttp3.Response;
 import okhttp3.ResponseBody;
 
 public class RoomsFragment extends Fragment {
+
+    public static final MediaType JSON
+            = MediaType.parse("application/json; charset=utf-8");
+
 
     private String mapsKey;
     private String funcKey;
@@ -256,13 +261,9 @@ public class RoomsFragment extends Fragment {
 
         String endpoint = "https://hermesdbapi.azurewebsites.net/api/CreateRoom";
 
-        RequestBody formBody = new FormBody.Builder()
-                .add("connString", connString)
-                .add("longitude", longitude)
-                .add("latitude", latitude)
-                .add("nome", nomeValue)
-                .add("descrizione", descrizioneValue)
-                .build();
+        String jsonBody = "{\"connString\": \"" + connString + "\", \"longitude\": \"" + longitude + "\" ,\"latitude\": \"" + latitude + "\" ,\"nome\": \"" + nomeValue + "\" , \"descrizione\": \"" + descrizioneValue + "\"}";
+
+        RequestBody formBody = RequestBody.create(jsonBody, JSON );
 
         Request request = new Request.Builder()
                 .url(endpoint)

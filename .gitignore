@@ -19,3 +19,7 @@ android/Hermes/.idea/gradle.xml
 android/Hermes/.idea/compiler.xml
 android/Hermes/app/src/test/*
 android/Hermes/app/src/androidTest/*
+.vscode
+.terraform
+.terraform.*
+terraform.*
