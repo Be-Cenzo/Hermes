@@ -3,42 +3,13 @@ var qs = require('querystring');
 var sdk = require("microsoft-cognitiveservices-speech-sdk");
 const os = require('os');
 
-class BufferAudioStream extends sdk.PullAudioInputStreamCallback {
-    constructor(buffer) {
-      super();
-      this.buffer = buffer;
-      this.index = 0;
-    }
-  
-    close() {
-        this.buffer = undefined;
-        this.index = undefined;
-    }
-  
-    read() {
-      if (this.index >= this.buffer.length) {
-        return null;
-      }
-  
-      const chunkSize = Math.min(1024, this.buffer.length - this.index);
-      const chunk = this.buffer.slice(this.index, this.index + chunkSize);
-      this.index += chunkSize;
-  
-      return chunk;
-    }
-  }
-
-module.exports = async function (context, req) {
+module.exports = function (context, req) {
     context.log('JavaScript HTTP trigger function processed a request.');
-    //console.log(context);
-    //console.log(req);
     let b = qs.parse(req.body);
-    //console.log(b);
-    let temp = JSON.parse(JSON.stringify(b));
-    //console.log("\n\n\n\n");
-    //console.log(temp);
-    const body =  temp.file;//temp.file;
-    //console.log(body);
+    let form = JSON.parse(JSON.stringify(b));
+    const body =  form.file;
+    const srcLang = form.srcLang;
+    const dstLang = form.dstLang;
     if (!body) {
         context.res = {
             status: 400,
@@ -48,67 +19,32 @@ module.exports = async function (context, req) {
     else {
 
         var speechkey = req.headers['x-speech-key'];
-        //var speechkey = "c8d93f92692c45c1a9e918bb04448686";//req.headers['x-speech-key'];
         var region = "westeurope";
 
         let speechConfig = sdk.SpeechConfig.fromSubscription(speechkey, region);
-        speechConfig.speechRecognitionLanguage = "it-IT";
+        speechConfig.setProfanity(sdk.ProfanityOption.Raw);
+        speechConfig.speechRecognitionLanguage = srcLang;
 
-        //fs.writeFileSync('myFile.wav', body);
-
-        /*let audioStream = new AudioStream({
-            buffer: body
-        });*/
-
-        //console.log(req.files);
-
-
-        let file = Buffer.from(body, 'base64'); //Buffer.from(body, 'base64');//body;// Buffer.from(body);//  //
+        let file = Buffer.from(body, 'base64');
         
-        const tempFile = os.tmpdir() + "\\temp" + Math.floor(Math.random() * 10000000); +".wav"; //os.homedir()
-
-        //const tempFile = "D:\\home\\temp.wav"
-
-        
+        const tempFile = os.tmpdir() + "\\temp" + Math.floor(Math.random() * 10000000); +".wav"; 
         console.log(tempFile);
         
         fs.writeFileSync(tempFile, file);
 
         let stat = fs.statSync(tempFile);
         console.log(stat.size);
-
-        //let audioInputStream = new sdk.AudioInputStream();
-
-        /*let audioInputStream = sdk.AudioInputStream.createPushStream({
-            format: sdk.AudioStreamFormat.getWaveFormatPCM(16000, 16, 1),
-          });
-
-        audioInputStream.write(file.buffer);*/
-
-        //let audioConfig = sdk.AudioConfig.fromStreamInput(new BufferAudioStream(file.buffer));
-        //let audioConfig = sdk.AudioConfig.fromWavFileInput(fs.readFileSync(tempFile));
-
-        let pushStream = sdk.AudioInputStream.createPushStream();
-        pushStream.write(file.buffer);
-
-        fs.createReadStream(tempFile).on('data', function(arrayBuffer) {
-            pushStream.write(arrayBuffer.slice());
-        }).on('end', function() {
-            pushStream.close();
-        });
-
-        let audioConfig = sdk.AudioConfig.fromStreamInput(pushStream);
+        let audioConfig = sdk.AudioConfig.fromWavFileInput(fs.readFileSync(tempFile));
 
         let speechRecognizer = new sdk.SpeechRecognizer(speechConfig, audioConfig);
 
-        let buf = fs.readFileSync(tempFile);
-        //buf = Buffer.from(body, 'base64').toString('utf-8');
+        /*let buf = fs.readFileSync(tempFile);
         let i = 0;
         for(i = 0; i<50; i++){
             console.log(buf[i]);
             if(i === 43)
                 console.log("finito l'header");
-        }
+        }*/
         console.log("Esecuzione");
 
         speechRecognizer.recognizeOnceAsync(result => {

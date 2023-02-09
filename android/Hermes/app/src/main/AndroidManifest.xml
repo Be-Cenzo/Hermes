@@ -46,6 +46,10 @@
             android:value = "${SPEECH_KEY}"/>
 
         <meta-data
+            android:name = "tranKey"
+            android:value = "${TRAN_KEY}"/>
+
+        <meta-data
             android:name = "connString"
             android:value = "${CONN_STRING}"/>
     </application>

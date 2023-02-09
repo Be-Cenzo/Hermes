@@ -1,58 +1,42 @@
 package be.cenzo.hermes.ui.translate;
 
-import android.Manifest;
-import android.annotation.SuppressLint;
-import android.app.ProgressDialog;
-import android.content.DialogInterface;
-import android.content.pm.PackageManager;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
+import android.media.MediaDataSource;
 import android.media.MediaPlayer;
 import android.media.MediaRecorder;
 import android.os.AsyncTask;
 import android.os.Build;
-import android.os.Environment;
 import android.util.Log;
-import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
-import androidx.core.content.ContextCompat;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.Console;
-import java.io.DataInputStream;
+import java.io.ByteArrayInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.Base64;
+import java.util.Observable;
+import java.util.Observer;
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import okhttp3.Call;
-import okhttp3.Callback;
-import okhttp3.FormBody;
-import okhttp3.MediaType;
-import okhttp3.MultipartBody;
 import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
 
-public class TranslateViewModel extends ViewModel {
+public class TranslateViewModel extends ViewModel implements Observer{
 
     private RecordWaveTask recordTask;
 
     private String funcKey;
     private String speechKey;
+    private String tranKey;
 
     private static final int SAMPLE_RATE = 16000;
     private static final int CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_MONO;
@@ -64,10 +48,18 @@ public class TranslateViewModel extends ViewModel {
     private Language menu_1_selected;
     private Language menu_2_selected;
 
+    private RunnableRequestTask runnableRequestTask;
+
+    // direzione della traduzione
+    // 1 traduzione da 1 a 2, va quindi prima cambiato il text di editText1 e poi quello di editText2
+    // 2 traduzione da 2 ad 1
+    private int dir;
+
+
     private AudioRecord audioRecorder = null;
     private DataOutputStream dos = null;
     private MediaRecorder recorder = null;
-    private MediaPlayer mp = null;
+    private MediaPlayer mediaPlayer = null;
     private File outputFile;
     private String outputFilePath;
     private File outputDir;
@@ -81,15 +73,18 @@ public class TranslateViewModel extends ViewModel {
         editText_2_value = new MutableLiveData<>();
         editText_2_value.setValue("Let's Start the Conversation");
         recordTask = new RecordWaveTask();
+        //req = new RequestTask(dir, srcLang, dstLang, funcKey, speechKey);
+        dir = 0;
     }
 
     public void setOutputDir(File outputDir){
         this.outputDir = outputDir;
     }
 
-    public void setKeys(String speech, String func){
+    public void setKeys(String speech, String func, String tran){
         speechKey = speech;
         funcKey = func;
+        tranKey = tran;
     }
 
     public LiveData<String> getEditText_1_Value() {
@@ -100,7 +95,71 @@ public class TranslateViewModel extends ViewModel {
         return editText_2_value;
     }
 
+    private void updateEditText(TranslateResults results){
+        if(results.getStato() == RunnableRequestTask.TEXT_TO_SPEECH){
+            //riproduci audio
+            try{
+                byte[] audioData = android.util.Base64.decode(results.getBase64DstAudio(), android.util.Base64.DEFAULT);
+                InputStream inputStream = new ByteArrayInputStream(audioData);
+                Log.d("elaboro", "Ho decodificato");
+
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                    MediaDataSource dataSource = new MediaDataSource() {
+                        @Override
+                        public int readAt(long position, byte[] buffer, int offset, int size) {
+                                    /*int i = 0;
+                                    for(; i<size && i+position<audioData.length; i++){
+                                        buffer[offset+i] = audioData[(int) (position+i-1)];
+                                    }
+                                    if(i<size)
+                                        return -1;
+                                    return i;*/
+                            if (position + size > audioData.length) {
+                                return -1;
+                            } else {
+                                System.arraycopy(audioData, (int) position, buffer, offset, size);
+                                return size;
+                            }
+                        }
+
+                        @Override
+                        public long getSize() {
+                            return audioData.length;
+                        }
+
+                        @Override
+                        public void close() {
+                        }
+                    };
+
+
+                    mediaPlayer = new MediaPlayer();
+                    mediaPlayer.setDataSource(dataSource);
+                    mediaPlayer.prepare();
+                    Log.d("elaboro", "faccio play");
+                    mediaPlayer.start();
+                }
+            }
+            catch (IOException e){
+                e.printStackTrace();
+            }
+        }
+        else if(dir == 1){
+            if(results.getStato() == RunnableRequestTask.SPEECH_TO_TEXT)
+                editText_1_value.postValue(results.getSrcText());
+            else if(results.getStato() == RunnableRequestTask.TRANSLATE)
+                editText_2_value.postValue(results.getDstText());
+        }
+        else if(dir == 2){
+            if(results.getStato() == RunnableRequestTask.SPEECH_TO_TEXT)
+                editText_2_value.postValue(results.getSrcText());
+            else if(results.getStato() == RunnableRequestTask.TRANSLATE)
+                editText_1_value.postValue(results.getDstText());
+        }
+    }
+
     public void setMenu_1_selected(Language l){
+        Log.d("Lang","Che sta succedendo?" + l.getCode());
         menu_1_selected = l;
     }
 
@@ -108,60 +167,8 @@ public class TranslateViewModel extends ViewModel {
         menu_2_selected = l;
     }
 
-    @SuppressLint("WrongConstant")
-    public void startRecording(){
-        Log.d("Translate", "Traduco da: " + menu_1_selected + " a " + menu_2_selected);
-        // Registrazione dell'audio
-        //outputDir = getCacheDir(); // context being the Activity pointer
-        try{
-            outputFile = File.createTempFile("audio" + new Random().nextInt(100000), ".wav", outputDir);
-            //outputFilePath = Environment.getExternalStoragePublicDirectory( Environment.DIRECTORY_DOCUMENTS).getAbsolutePath() + "/audio.wav";
-            /*if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                outputFilePath = Environment.getStorageDirectory().getAbsolutePath() + "/audio.wav";
-            }*/
-            //Log.d("FilePath" , outputFilePath);
-            //outputFile.setReadable(true, false);
-            recorder = new MediaRecorder();
-            recorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-            recorder.setOutputFormat(AudioFormat.ENCODING_PCM_16BIT);//MediaRecorder.OutputFormat.RAW_AMR  AudioFormat.ENCODING_PCM_16BIT
-            recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);//.AAC
-            recorder.setAudioChannels(1);
-            recorder.setAudioEncodingBitRate(128000);
-            recorder.setAudioSamplingRate(16000);
-            recorder.setOutputFile(outputFile.getPath());
-
-            recorder.prepare();
-
-            recorder.start();
-        }catch(IOException e){
-            e.printStackTrace();
-        }
-    }
-
-    public void startRecording2(){
-        Log.d("Translate", "Traduco da: " + menu_1_selected + " a " + menu_2_selected);
-        // Registrazione dell'audio
-        //outputDir = getCacheDir(); // context being the Activity pointer
-        int buffSize =  AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT);
-        audioRecorder = new AudioRecord(MediaRecorder.AudioSource.MIC, SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT, buffSize);
-        try {
-            outputFile = File.createTempFile("audio", ".wav", outputDir);
-            dos = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(outputFile)));
-            short[] buffer = new short[buffSize/4];
-            audioRecorder.startRecording();
-            int bufferReadResult = audioRecorder.read(buffer, 0, buffSize/4);
-            while (bufferReadResult != AudioRecord.ERROR_INVALID_OPERATION && bufferReadResult != AudioRecord.ERROR && bufferReadResult != AudioRecord.ERROR_BAD_VALUE && bufferReadResult != AudioRecord.ERROR_DEAD_OBJECT ) {
-
-                for(int i = 0; i< bufferReadResult; i++)
-                    dos.writeShort(buffer[i]);
-                audioRecorder.read(buffer, 0, buffSize);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void startRecording3(){
+    public void startRecording(int dir){
+        this.dir = dir;
         //outputFilePath = Environment.getExternalStoragePublicDirectory( Environment.DIRECTORY_DOCUMENTS).getAbsolutePath() + "/audio" + new Random().nextInt(100000) + ".wav";
         //outputFile = new File(outputFilePath);//File.createTempFile("audio", ".wav", outputDir);
         try {
@@ -187,7 +194,7 @@ public class TranslateViewModel extends ViewModel {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
-    public void stopRecording3(){
+    public void stopRecording(){
         if (!recordTask.isCancelled() && recordTask.getStatus() == AsyncTask.Status.RUNNING) {
             recordTask.cancel(false);
 
@@ -198,165 +205,24 @@ public class TranslateViewModel extends ViewModel {
         }
     }
 
-    public void stopRecording2(){
-        if(audioRecorder != null){
-            recorder.stop();
-            recorder.reset();
-            recorder.release();
-            recorder = null;
-            try {
-                dos.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+    public void cancelExecution(){
+        if (!recordTask.isCancelled() && recordTask.getStatus() == AsyncTask.Status.RUNNING) {
+            recordTask.cancel(false);
+        } else {
+            Log.d("Stop", "non era in esecuzione");
         }
-    }
-
-    @RequiresApi(api = Build.VERSION_CODES.O)
-    private byte[] getWavData(String filePath) {
-        final File file = new File(filePath);
-        final byte[] data;
-        try {
-            data = Files.readAllBytes(file.toPath());
-            /*final DataInputStream dis = new DataInputStream(new FileInputStream(file));
-            dis.readFully(data);
-            dis.close();*/
-            final int totalAudioLen = data.length;
-            final int totalDataLen = totalAudioLen + 36;
-            final byte[] header = new byte[44];
-
-            header[0] = 'R';
-            header[1] = 'I';
-            header[2] = 'F';
-            header[3] = 'F';
-            header[4] = (byte) (totalDataLen & 0xff);
-            header[5] = (byte) ((totalDataLen >> 8) & 0xff);
-            header[6] = (byte) ((totalDataLen >> 16) & 0xff);
-            header[7] = (byte) ((totalDataLen >> 24) & 0xff);
-            header[8] = 'W';
-            header[9] = 'A';
-            header[10] = 'V';
-            header[11] = 'E';
-            header[12] = 'f';
-            header[13] = 'm';
-            header[14] = 't';
-            header[15] = ' ';
-            header[16] = 16;
-            header[17] = 0;
-            header[18] = 0;
-            header[19] = 0;
-            header[20] = 1;
-            header[21] = 0;
-            header[22] = (byte) CHANNEL_CONFIG;
-            header[23] = 0;
-            header[24] = (byte) (SAMPLE_RATE & 0xff);
-            header[25] = (byte) ((SAMPLE_RATE >> 8) & 0xff);
-            header[26] = (byte) ((SAMPLE_RATE >> 16) & 0xff);
-            header[27] = (byte) ((SAMPLE_RATE >> 24) & 0xff);
-            header[28] = (byte) (SAMPLE_RATE * 2 * CHANNEL_CONFIG / 8);
-            header[29] = 0;
-            header[30] = (byte) (AUDIO_FORMAT / 8);
-            header[31] = 0;
-            header[32] = (byte) (CHANNEL_CONFIG * AUDIO_FORMAT / 8);
-            header[33] = 0;
-            header[34] = 16;
-            header[35] = 0;
-            header[36] = 'd';
-            header[37] = 'a';
-            header[38] = 't';
-            header[39] = 'a';
-            header[40] = (byte) (totalAudioLen & 0xff);
-            header[41] = (byte) ((totalAudioLen >> 8) & 0xff);
-            header[42] = (byte) ((totalAudioLen >> 16) & 0xff);
-            header[43] = (byte) ((totalAudioLen >> 24) & 0xff);
-
-            byte[] wavFile = new byte[header.length + data.length];
-            System.arraycopy(header, 0 , wavFile, 0, header.length);
-            System.arraycopy(data, 0, wavFile, header.length-1, data.length);
-            return wavFile;
-
-        } catch (IOException e) {
-            e.printStackTrace();
+        /*if (req != null){
+            req.cancel(true);
+            req.unsubscribe(this);
         }
-        return null;
-    }
+        req = null;*/
+        //req = new RequestTask(dir, srcLang, dstLang, funcKey, speechKey);
+       if (runnableRequestTask != null) {
+           runnableRequestTask.cancel();
+           runnableRequestTask.deleteObserver(this);
+           runnableRequestTask = null;
 
-    /*public boolean downloadFile(final String path) {
-        try {
-
-            File file = new File(.getDir("filesdir", Context.MODE_PRIVATE) + "/yourfile.png");
-
-            if (file.exists()) {
-                file.delete();
-            }
-            file.createNewFile();
-
-            FileOutputStream outStream = new FileOutputStream(file);
-            byte[] buff = new byte[5 * 1024];
-
-            int len;
-            while ((len = inStream.read(buff)) != -1) {
-                outStream.write(buff, 0, len);
-            }
-
-            outStream.flush();
-            outStream.close();
-            inStream.close();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
-        }
-
-        return true;
-    }*/
-
-    @RequiresApi(api = Build.VERSION_CODES.O)
-    public void stopRecording(){
-        recorder.stop();
-        recorder.reset();
-        recorder.release();
-        recorder = null;
-
-        /*try {
-            if (mp != null) {
-                mp.stop();
-                mp.reset();
-                mp.release();
-                mp = null;
-            }
-            mp = new MediaPlayer();
-            Log.d("seguimi", "" + outputDir + "    file: " + outputFile);
-            Log.d("boh", "" + outputFile.length());
-            mp.setDataSource("" + outputFile);
-            mp.prepare();
-            mp.start();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }*/
-
-        Log.d("File", "" + outputFile);
-
-        byte[] file = getWavData(outputFile.getPath());
-        for(int i = 0; i<44; i++){
-            Log.d("header wav file", file[i] + "\n");
-        }
-
-        String fPath = Environment.getExternalStoragePublicDirectory( Environment.DIRECTORY_DOCUMENTS).getAbsolutePath() + "/audio.wav";
-        Log.d("filepath" , fPath);
-        File f = new File(fPath);
-        try {
-            FileOutputStream fos = new FileOutputStream(fPath);
-            fos.write(file);
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-
-        String endpoint = "https://hermesapiapp.azurewebsites.net/api/speechtotext";
-        uploadFile(endpoint, outputFile);
+       }
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
@@ -372,18 +238,26 @@ public class TranslateViewModel extends ViewModel {
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     public Boolean uploadFile(String serverURL, File file) {
-        try {
+        /*try {
 
             /*RequestBody requestBody = new MultipartBody.Builder().setType(MultipartBody.FORM)
                     .addFormDataPart("audio", file.getName(),
                             RequestBody.create(file, MediaType.parse("audio/wav")))
-                    .build();*/
+                    .build();
+            String srcLang = menu_1_selected.getCode();
+            String dstLang = menu_2_selected.getCode();
+            if(dir == 2)
+                srcLang = menu_2_selected.getCode();
+                dstLang = menu_1_selected.getCode();
+
 
             String requestBody = encodeFileToBase64(file);
             Log.d("audiowav", requestBody);
 
             RequestBody requestBodys= new FormBody.Builder()
                     .add("file", requestBody)
+                    .add("srcLang", srcLang)
+                    .add("dstLang", dstLang)
                     .build();
 
             Request request = new Request.Builder()
@@ -406,16 +280,48 @@ public class TranslateViewModel extends ViewModel {
                     if (!response.isSuccessful()) {
                         Log.d("Risposta", "problemi, problemi");
                     }
-                    /*else
-                        editText_1_value.setValue(response.body().string());*/
-                    Log.d("Risposta", "risposta: " + response.body().string());
+                    else {
+                        String textValue = response.body().string();
+                        updateEditText(textValue);
+                        Log.d("Risposta", "risposta: " + textValue);
+                    }
                 }
             });
 
             return true;
         } catch (Exception ex) {
             ex.printStackTrace();
-        }
+        }*/
+
+
+        /*req.subscribe(this);
+        req.setFile(outputFile);
+        req.execute();*/
+        createAndExecuteRunnable();
         return false;
+    }
+
+    public void createAndExecuteRunnable(){
+        String srcLang = menu_1_selected.getCode();
+        String dstLang = menu_2_selected.getCode();
+        Log.d("Lang", "src:" + srcLang + " dst:" + dstLang);
+        if(dir == 2) {
+            srcLang = menu_2_selected.getCode();
+            dstLang = menu_1_selected.getCode();
+        }
+        runnableRequestTask = new RunnableRequestTask(dir, srcLang, dstLang, funcKey, speechKey, tranKey, outputFile);
+        runnableRequestTask.addObserver(this);
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        executor.execute(runnableRequestTask);
+    }
+
+    /*public void getUpdates(){
+        updateEditText(req.getResult());
+    }*/
+
+    @Override
+    public void update(Observable o, Object arg) {
+        Log.d("Debug", "non funziona");
+        updateEditText((TranslateResults) arg);
     }
 }

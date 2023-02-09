@@ -26,6 +26,7 @@ import androidx.lifecycle.ViewModelProvider;
 import com.azure.android.maps.control.AzureMaps;
 
 import java.util.ArrayList;
+import java.util.Observable;
 
 import be.cenzo.hermes.MainActivity;
 import be.cenzo.hermes.R;
@@ -35,6 +36,7 @@ public class TranslateFragment extends Fragment {
 
     private String funcKey;
     private String speechKey;
+    private String tranKey;
 
     private TranslateViewModel translateViewModel;
     private FragmentTranslateBinding binding;
@@ -64,7 +66,8 @@ public class TranslateFragment extends Fragment {
             Bundle bundle = app.metaData;
             speechKey = bundle.getString("speechKey");
             funcKey = bundle.getString("funcKey");
-            translateViewModel.setKeys(speechKey, funcKey);
+            tranKey = bundle.getString("tranKey");
+            translateViewModel.setKeys(speechKey, funcKey, tranKey);
         } catch (Exception e) {
             Log.d("KEY", "Errore durante il retrieve della chiave");
             e.printStackTrace();
@@ -83,6 +86,8 @@ public class TranslateFragment extends Fragment {
 
         cancel_1 = binding.cancel1;
         cancel_2 = binding.cancel2;
+        cancel_1.setOnClickListener((v) -> cancelExecution(v));
+        cancel_2.setOnClickListener((v) -> cancelExecution(v));
 
 
         ArrayList<Language> languages = new ArrayList<Language>();
@@ -139,7 +144,7 @@ public class TranslateFragment extends Fragment {
                 return;
             }
             else{
-                translateViewModel.startRecording3();
+                translateViewModel.startRecording(btn);
             }
         }
 
@@ -164,7 +169,12 @@ public class TranslateFragment extends Fragment {
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     private void stopRecording(View view){
-        translateViewModel.stopRecording3();
+        translateViewModel.stopRecording();
+        resetListeners();
+    }
+
+    private void cancelExecution(View view){
+        translateViewModel.cancelExecution();
         resetListeners();
     }
 
@@ -190,8 +200,8 @@ public class TranslateFragment extends Fragment {
     private void resetListeners(){
         play_1.setOnClickListener((view) -> startRecording(view));
         play_2.setOnClickListener((view) -> startRecording(view));
-        cancel_2.setOnClickListener(null);
-        cancel_2.setOnClickListener(null);
+        cancel_1.setOnClickListener((view) -> cancelExecution(view));
+        cancel_2.setOnClickListener((view) -> cancelExecution(view));
         play_1.setText("O");
         play_2.setText("O");
 
