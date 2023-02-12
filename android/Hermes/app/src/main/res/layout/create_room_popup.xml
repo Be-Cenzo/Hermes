@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:paddingLeft="10dp"
+    android:paddingRight="10dp"
+    android:gravity="center">
+
+    <androidx.cardview.widget.CardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:cardCornerRadius="5dp">
+
+        <LinearLayout
+            android:padding="10dp"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:background="?attr/colorSecondaryVariant">
+
+            <TextView
+                android:layout_gravity="center"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Crea una nuova Room"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:padding="10dp"/>
+
+            <TextView
+                android:layout_gravity="start"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Nome"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:padding="10dp"/>
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/inputnome"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Nome"
+                android:padding="15dp"/>
+
+            <TextView
+                android:layout_gravity="start"
+
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Descrizione"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:padding="10dp"/>
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/descrizione"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Descrizione"
+                android:padding="15dp"/>
+
+
+            <Button
+                android:id="@+id/creaRoomButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Crea" />
+
+        </LinearLayout>
+
+    </androidx.cardview.widget.CardView>
+</LinearLayout>

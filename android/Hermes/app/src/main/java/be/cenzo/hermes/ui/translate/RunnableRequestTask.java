@@ -38,6 +38,7 @@ public class RunnableRequestTask extends Observable implements Runnable {
     private int direction;
     private String srcLang;
     private String dstLang;
+    private Voice dstVoice;
     private File audioFile;
     private int stato;
     private TranslateResults result;
@@ -53,11 +54,12 @@ public class RunnableRequestTask extends Observable implements Runnable {
     private ArrayList<TranslateViewModel> subscribers = new ArrayList<TranslateViewModel>();
     private boolean isCancelled;
 
-    public RunnableRequestTask(int direction, String srcLang, String dstLang, String funcKey, String speechKey, String tranKey, File outputFile){
+    public RunnableRequestTask(int direction, String srcLang, String dstLang, Voice dstVoice, String funcKey, String speechKey, String tranKey, File outputFile){
         this.direction = direction;
         this.audioFile = outputFile;
         this.srcLang = srcLang;
         this.dstLang = dstLang;
+        this.dstVoice = dstVoice;
         this.funcKey = funcKey;
         this.speechKey = speechKey;
         this.tranKey = tranKey;
@@ -117,7 +119,7 @@ public class RunnableRequestTask extends Observable implements Runnable {
                     String textValue = response.body().string();
                     stato = SPEECH_TO_TEXT;
                     setResultAndNotify(textValue);
-                    Log.d("Risposta", "risposta: " + textValue);
+                    Log.d("Risposta", "speech-to-text: " + textValue);
                 }
                 running = false;
             }
@@ -157,7 +159,7 @@ public class RunnableRequestTask extends Observable implements Runnable {
                     String textValue = response.body().string();
                     stato = TRANSLATE;
                     setResultAndNotify(textValue);
-                    Log.d("Risposta", "risposta: " + textValue);
+                    Log.d("Risposta", "translate: " + textValue);
                 }
                 running = false;
             }
@@ -171,8 +173,9 @@ public class RunnableRequestTask extends Observable implements Runnable {
 
     private void TextToSpeech(){
 
-        String queryString = "?text=" + result.getDstText() + "&lang=" + dstLang;
+        String queryString = "?text=" + result.getDstText() + "&lang=" + dstLang + "&voice=" + dstVoice.getVoiceCode();
 
+        Log.d("VoceUtilizzata", "voce: " + dstVoice.getVoiceLabel() + " " + dstVoice.getVoiceCode());
         Request request = new Request.Builder()
                 .url(textToSpeechEndpoint + queryString)
                 .addHeader("x-functions-key", funcKey)
@@ -194,10 +197,15 @@ public class RunnableRequestTask extends Observable implements Runnable {
                     Log.d("Risposta", "problemi, problemi");
                 }
                 else {
-                    Audio audio = new Gson().fromJson(response.body().string(), Audio.class);
-                    stato = TEXT_TO_SPEECH;
-                    setResultAndNotify(audio.getBase64audio());
-                    Log.d("Risposta", "risposta: " + result.getBase64DstAudio());
+                    try {
+                        Audio audio = new Gson().fromJson(response.body().string(), Audio.class);
+                        stato = TEXT_TO_SPEECH;
+                        setResultAndNotify(audio.getBase64audio());
+                        Log.d("Risposta", "text-to-speech: " + result.getBase64DstAudio());
+                    }catch (Exception e){
+
+                        Log.d("Risposta", "text-to-speech: errore nel JSON");
+                    }
                 }
                 running = false;
             }

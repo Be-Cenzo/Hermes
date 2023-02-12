@@ -10,25 +10,19 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Spinner;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 
-import com.azure.android.maps.control.AzureMaps;
+import com.google.android.material.button.MaterialButton;
 
-import java.util.ArrayList;
-import java.util.Observable;
-
-import be.cenzo.hermes.MainActivity;
 import be.cenzo.hermes.R;
 import be.cenzo.hermes.databinding.FragmentTranslateBinding;
 
@@ -47,10 +41,10 @@ public class TranslateFragment extends Fragment {
     private EditText editText_1;
     private EditText editText_2;
 
-    private Button play_1;
-    private Button play_2;
-    private Button cancel_1;
-    private Button cancel_2;
+    private MaterialButton play_1;
+    private MaterialButton play_2;
+    private MaterialButton cancel_1;
+    private MaterialButton cancel_2;
 
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
@@ -72,6 +66,7 @@ public class TranslateFragment extends Fragment {
             Log.d("KEY", "Errore durante il retrieve della chiave");
             e.printStackTrace();
         }
+        translateViewModel.getVoicesList();
 
         menu_1 = binding.menu1;
         menu_2 = binding.menu2;
@@ -79,22 +74,17 @@ public class TranslateFragment extends Fragment {
         editText_1 = binding.editText1;
         editText_2 = binding.editText2;
 
-        play_1 = binding.play1;
-        play_2 = binding.play2;
+        play_1 = (MaterialButton) binding.play1;
+        play_2 = (MaterialButton) binding.play2;
         play_1.setOnClickListener((v) -> startRecording(v));
         play_2.setOnClickListener((v) -> startRecording(v));
 
-        cancel_1 = binding.cancel1;
-        cancel_2 = binding.cancel2;
+        cancel_1 = (MaterialButton) binding.cancel1;
+        cancel_2 = (MaterialButton) binding.cancel2;
         cancel_1.setOnClickListener((v) -> cancelExecution(v));
         cancel_2.setOnClickListener((v) -> cancelExecution(v));
 
-
-        ArrayList<Language> languages = new ArrayList<Language>();
-        String[] coll =  {"Italiano", "English"};
-        languages.add(new Language("Italian", "it-IT"));
-        languages.add(new Language("English", "en-US"));
-        languages.add(new Language("Spanish", "es-ES"));
+        Language[] languages = {};
 
 
         ArrayAdapter langList = new ArrayAdapter(root.getContext(), android.R.layout.simple_spinner_item, languages);
@@ -117,6 +107,22 @@ public class TranslateFragment extends Fragment {
             @Override
             public void onChanged(@Nullable String s) {
                 editText_2.setText(s);
+            }
+        });
+
+        translateViewModel.getLingueValue().observe(getViewLifecycleOwner(), new Observer<Language[]>() {
+            @Override
+            public void onChanged(@Nullable Language[] lingue) {
+                if(lingue != null){
+                    ArrayAdapter langList = new ArrayAdapter(root.getContext(), android.R.layout.simple_spinner_item, lingue);
+                    langList.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+
+                    ArrayAdapter langListReversed = new ArrayAdapter(root.getContext(), android.R.layout.simple_spinner_item, lingue);
+                    langListReversed.setDropDownViewResource(R.layout.simple_spinner_dropdown_item_reversed);
+
+                    menu_1.setAdapter(langListReversed);
+                    menu_2.setAdapter(langList);
+                }
             }
         });
         return root;
@@ -184,13 +190,13 @@ public class TranslateFragment extends Fragment {
             play_2.setOnClickListener(null);
             play_1.setOnClickListener((view) -> stopRecording(view));
             cancel_2.setOnClickListener(null);
-            play_1.setText("S");
+            play_1.setIconResource(R.drawable.baseline_stop_24);
         }
         else if(btn == 2){
             play_2.setOnClickListener((view) -> stopRecording(view));
             play_1.setOnClickListener(null);
             cancel_1.setOnClickListener(null);
-            play_2.setText("S");
+            play_2.setIconResource(R.drawable.baseline_stop_24);
         }
         else{
             Log.d("GestioneStati", "Errore");
@@ -202,8 +208,8 @@ public class TranslateFragment extends Fragment {
         play_2.setOnClickListener((view) -> startRecording(view));
         cancel_1.setOnClickListener((view) -> cancelExecution(view));
         cancel_2.setOnClickListener((view) -> cancelExecution(view));
-        play_1.setText("O");
-        play_2.setText("O");
+        play_1.setIconResource(R.drawable.baseline_mic_24);
+        play_2.setIconResource(R.drawable.baseline_mic_24);
 
     }
 

@@ -14,6 +14,8 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
+import com.google.gson.Gson;
+
 import java.io.ByteArrayInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -28,7 +30,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import okhttp3.Call;
+import okhttp3.Callback;
 import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 public class TranslateViewModel extends ViewModel implements Observer{
 
@@ -45,6 +50,7 @@ public class TranslateViewModel extends ViewModel implements Observer{
     private static final int REQUEST_RECORD_AUDIO_PERMISSION = 1;
     private MutableLiveData<String> editText_1_value;
     private MutableLiveData<String> editText_2_value;
+    private MutableLiveData<Language[]> lingue;
     private Language menu_1_selected;
     private Language menu_2_selected;
 
@@ -73,6 +79,7 @@ public class TranslateViewModel extends ViewModel implements Observer{
         editText_2_value = new MutableLiveData<>();
         editText_2_value.setValue("Let's Start the Conversation");
         recordTask = new RecordWaveTask();
+        lingue = new MutableLiveData<>();
         //req = new RequestTask(dir, srcLang, dstLang, funcKey, speechKey);
         dir = 0;
     }
@@ -95,6 +102,10 @@ public class TranslateViewModel extends ViewModel implements Observer{
         return editText_2_value;
     }
 
+    public LiveData<Language[]> getLingueValue() {
+        return lingue;
+    }
+
     private void updateEditText(TranslateResults results){
         if(results.getStato() == RunnableRequestTask.TEXT_TO_SPEECH){
             //riproduci audio
@@ -107,14 +118,11 @@ public class TranslateViewModel extends ViewModel implements Observer{
                     MediaDataSource dataSource = new MediaDataSource() {
                         @Override
                         public int readAt(long position, byte[] buffer, int offset, int size) {
-                                    /*int i = 0;
-                                    for(; i<size && i+position<audioData.length; i++){
-                                        buffer[offset+i] = audioData[(int) (position+i-1)];
-                                    }
-                                    if(i<size)
-                                        return -1;
-                                    return i;*/
-                            if (position + size > audioData.length) {
+                            if (position > audioData.length)
+                                return -1;
+                            else if (position + size > audioData.length) {
+                                size = (int) (audioData.length - position);
+                                System.arraycopy(audioData, (int) position, buffer, offset, size);
                                 return -1;
                             } else {
                                 System.arraycopy(audioData, (int) position, buffer, offset, size);
@@ -304,12 +312,15 @@ public class TranslateViewModel extends ViewModel implements Observer{
     public void createAndExecuteRunnable(){
         String srcLang = menu_1_selected.getCode();
         String dstLang = menu_2_selected.getCode();
-        Log.d("Lang", "src:" + srcLang + " dst:" + dstLang);
+        Voice dstVoice = menu_2_selected.getVoice();
+                Log.d("Lang", "src:" + srcLang + " dst:" + dstLang);
         if(dir == 2) {
             srcLang = menu_2_selected.getCode();
             dstLang = menu_1_selected.getCode();
+            dstVoice = menu_1_selected.getVoice();
         }
-        runnableRequestTask = new RunnableRequestTask(dir, srcLang, dstLang, funcKey, speechKey, tranKey, outputFile);
+
+        runnableRequestTask = new RunnableRequestTask(dir, srcLang, dstLang, dstVoice, funcKey, speechKey, tranKey, outputFile);
         runnableRequestTask.addObserver(this);
         ExecutorService executor = Executors.newSingleThreadExecutor();
         executor.execute(runnableRequestTask);
@@ -323,5 +334,38 @@ public class TranslateViewModel extends ViewModel implements Observer{
     public void update(Observable o, Object arg) {
         Log.d("Debug", "non funziona");
         updateEditText((TranslateResults) arg);
+    }
+
+    public void getVoicesList(){
+        String voiceEndpoint = "https://hermesapiapp.azurewebsites.net/api/getvoiceslist";
+        Request request = new Request.Builder()
+                .url(voiceEndpoint)
+                .addHeader("x-functions-key", funcKey)
+                .addHeader("x-speech-key", speechKey)
+                .build();
+
+        call = client.newCall(request);
+        call.enqueue(new Callback() {
+
+            @Override
+            public void onFailure(final Call call, final IOException e) {
+                Log.d("Risposta", "errore nella richiesta");
+            }
+
+            @Override
+            public void onResponse(final Call call, final Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    Log.d("Risposta", "problemi, problemi " + response.body().string());
+                }
+                else {
+                    String textValue = response.body().string();
+                    Gson gson = new Gson();
+                    Language[] res = gson.fromJson(textValue, Language[].class);
+                    lingue.postValue(res);
+                    //ArrayList<Map<String, String>> map = gson.fromJson(textValue, ArrayList<Map<String, String>>.class);
+                    Log.d("Risposta", "risposta: " + res[0].toString());
+                }
+            }
+        });
     }
 }

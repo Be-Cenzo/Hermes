@@ -11,19 +11,6 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
 
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/inputnome"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Name"/>
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/descrizione"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Description"/>
-
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent">

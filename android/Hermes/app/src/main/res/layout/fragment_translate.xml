@@ -40,9 +40,9 @@
                 android:ems="10"
                 android:focusable="false"
                 android:gravity="center"
+                android:hint="Start Speaking"
                 android:inputType="textMultiLine"
-                android:singleLine="false"
-                android:hint="Start Speaking"/>
+                android:singleLine="false" />
 
         </RelativeLayout>
 
@@ -63,18 +63,26 @@
                 <Button
                     android:id="@+id/play_1"
                     android:layout_width="80dp"
-                    android:layout_height="90dp"
-                    android:text="O"
+                    android:layout_height="80dp"
+                    android:layout_margin="6dp"
+                    android:insetLeft="0dp"
+                    android:insetTop="0dp"
+                    android:insetRight="0dp"
+                    android:insetBottom="0dp"
                     app:cornerRadius="50dp"
-                    android:layout_margin="6dp"/>
+                    app:icon="@drawable/baseline_mic_24"
+                    app:iconGravity="textStart"
+                    app:iconPadding="0dp" />
 
                 <Button
                     android:id="@+id/cancel_1"
                     android:layout_width="60dp"
-                    android:layout_height="70dp"
-                    android:text="X"
+                    android:layout_height="60dp"
                     app:cornerRadius="50dp"
-                    android:layout_margin="6dp" />
+                    android:layout_margin="6dp"
+                    app:icon="@drawable/outline_cancel_24"
+                    app:iconGravity="textStart"
+                    app:iconPadding="0dp" />
 
             </LinearLayout>
 
@@ -135,21 +143,29 @@
                 android:layout_alignParentBottom="true"
                 android:layout_centerInParent="true">
 
-                <Button
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/play_2"
                     android:layout_width="80dp"
-                    android:layout_height="90dp"
-                    android:text="O"
+                    android:layout_height="80dp"
                     app:cornerRadius="50dp"
-                    android:layout_margin="6dp" />
+                    android:insetLeft="0dp"
+                    android:insetTop="0dp"
+                    android:insetRight="0dp"
+                    android:insetBottom="0dp"
+                    android:layout_margin="6dp"
+                    app:icon="@drawable/baseline_mic_24"
+                    app:iconGravity="textStart"
+                    app:iconPadding="0dp"/>
 
-                <Button
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/cancel_2"
                     android:layout_width="60dp"
-                    android:layout_height="70dp"
-                    android:text="X"
+                    android:layout_height="60dp"
                     app:cornerRadius="50dp"
-                    android:layout_margin="6dp" />
+                    android:layout_margin="6dp"
+                    app:icon="@drawable/outline_cancel_24"
+                    app:iconGravity="textStart"
+                    app:iconPadding="0dp"/>
 
             </LinearLayout>
 

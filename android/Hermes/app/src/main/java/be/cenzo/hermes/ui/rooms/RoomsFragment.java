@@ -16,13 +16,17 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.Animation;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.azure.android.maps.control.AzureMaps;
 import com.azure.android.maps.control.MapControl;
@@ -44,6 +48,7 @@ import java.net.URISyntaxException;
 
 import be.cenzo.hermes.R;
 import be.cenzo.hermes.databinding.FragmentRoomsBinding;
+import be.cenzo.hermes.ui.translate.TranslateViewModel;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.FormBody;
@@ -57,17 +62,15 @@ import okhttp3.ResponseBody;
 
 public class RoomsFragment extends Fragment {
 
-    public static final MediaType JSON
-            = MediaType.parse("application/json; charset=utf-8");
-
-
     private String mapsKey;
     private String funcKey;
     private String connString;
 
     private FragmentRoomsBinding binding;
+    private MapViewModel mapViewModel;
 
     private DataSource roomsSource;
+    private DataSource userSource;
 
     private MapControl mapControl;
     private Button add;
@@ -77,16 +80,18 @@ public class RoomsFragment extends Fragment {
     private final OkHttpClient client = new OkHttpClient();
 
     private LocationManager locationManager;
-    private HermesLocationListener locationListener;
     private Location lastLocation;
 
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
+        mapViewModel =
+                new ViewModelProvider(this).get(MapViewModel.class);
 
         View rootView = inflater.inflate(R.layout.fragment_rooms, container, false);
         binding = FragmentRoomsBinding.inflate(inflater, container, false);
         View root = binding.getRoot();
         Context context = root.getContext();
+        userSource = new DataSource();
 
         try {
             ApplicationInfo app = getActivity().getPackageManager().getApplicationInfo(context.getPackageName(), PackageManager.GET_META_DATA);
@@ -94,23 +99,32 @@ public class RoomsFragment extends Fragment {
             mapsKey = bundle.getString("mapsKey");
             funcKey = bundle.getString("funcKey");
             connString = bundle.getString("connString");
+            mapViewModel.setFuncKey(funcKey);
+            mapViewModel.setConnString(connString);
             AzureMaps.setSubscriptionKey(mapsKey);
         } catch (Exception e) {
             Log.d("KEY", "Errore durante il retrieve della chiave");
             e.printStackTrace();
         }
 
-        locationManager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
+        mapViewModel.getLastLocation().observe(getViewLifecycleOwner(), new Observer<Location>() {
+            @Override
+            public void onChanged(@Nullable Location loc) {
+                if(lastLocation != null)
+                    userSource.remove(Point.fromLngLat(lastLocation.getLongitude(), lastLocation.getLatitude()));
+                lastLocation = loc;
+                userSource.add(Point.fromLngLat(lastLocation.getLongitude(), lastLocation.getLatitude()));
+            }
+        });
 
-        locationListener = new HermesLocationListener();
-        locationListener.subscribe(this);
+        locationManager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
                 getActivity().requestPermissions( new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
             }
             else{
-                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 5, locationListener);
+                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 5, mapViewModel.getLocationListener());
                 lastLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
 
             }
@@ -119,10 +133,7 @@ public class RoomsFragment extends Fragment {
 
         mapControl = (MapControl) root.findViewById(R.id.mapcontrol);
         mapControl.onCreate(savedInstanceState);
-
         add = (Button) root.findViewById(R.id.addButton);
-        nome = (TextInputEditText) root.findViewById(R.id.inputnome);
-        descrizione = (TextInputEditText) root.findViewById(R.id.descrizione);
 
         add.setOnClickListener((view) -> {addRoom(view);});
 
@@ -138,7 +149,7 @@ public class RoomsFragment extends Fragment {
 
             //Import the geojson data and add it to the data source.
             try {
-                roomsSource.importDataFromUrl("https://hermesdbapi.azurewebsites.net/api/GetRooms?code=" + funcKey + "&str=" + connString);
+                roomsSource.importDataFromUrl("https://hermesapiapp.azurewebsites.net/api/GetRooms?code=" + funcKey + "&str=" + connString);
             } catch (URISyntaxException e) {
                 e.printStackTrace();
             }
@@ -146,7 +157,6 @@ public class RoomsFragment extends Fragment {
             map.sources.add(roomsSource);
 
             // Posizione dell'utente
-            DataSource userSource = new DataSource();
             map.sources.add(userSource);
 
             if(lastLocation != null){
@@ -213,7 +223,7 @@ public class RoomsFragment extends Fragment {
     }
 
     private String getRooms(){
-        String endpoint = "https://hermesdbapi.azurewebsites.net/api/GetRooms?";
+        String endpoint = "https://hermesapiapp.azurewebsites.net/api/GetRooms?";
 
         RequestBody formBody = new FormBody.Builder()
                 .add("connString", connString)
@@ -252,14 +262,16 @@ public class RoomsFragment extends Fragment {
     }
 
     private void addRoom(View view) {
-        String nomeValue = nome.getText().toString();
+        CreateRoomCard crc = new CreateRoomCard(mapViewModel);
+        crc.showPopupWindow(view);
+        /*String nomeValue = nome.getText().toString();
         String descrizioneValue = descrizione.getText().toString();
         String longitude = "" + lastLocation.getLongitude();
         String latitude = "" + lastLocation.getLatitude();
 
         Log.d("Bottone", "" + nomeValue);
 
-        String endpoint = "https://hermesdbapi.azurewebsites.net/api/CreateRoom";
+        String endpoint = "https://hermesapiapp.azurewebsites.net/api/CreateRoom";
 
         String jsonBody = "{\"connString\": \"" + connString + "\", \"longitude\": \"" + longitude + "\" ,\"latitude\": \"" + latitude + "\" ,\"nome\": \"" + nomeValue + "\" , \"descrizione\": \"" + descrizioneValue + "\"}";
 
@@ -296,7 +308,7 @@ public class RoomsFragment extends Fragment {
 
                 }
             }
-        });
+        });*/
     }
 
 

@@ -70,7 +70,7 @@ public class CustomSpinner extends androidx.appcompat.widget.AppCompatSpinner {
         WMLP.x = 0; // x position
         WMLP.y = 0; // y position
         WMLP.height = WindowManager.LayoutParams.WRAP_CONTENT ; //LayoutParams.WRAP_CONTEN
-        WMLP.width = 315;
+        WMLP.width = WindowManager.LayoutParams.WRAP_CONTENT;
         WMLP.horizontalMargin = 0;
         WMLP.verticalMargin = 0;
 

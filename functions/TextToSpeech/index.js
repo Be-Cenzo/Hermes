@@ -6,6 +6,7 @@ module.exports = function (context, req) {
     context.log('JavaScript HTTP trigger function processed a request.');
     const text = req.query.text;
     const lang = req.query.lang;
+    const voice = req.query.voice;
     if (!text) {
         context.res = {
             status: 400,
@@ -13,88 +14,64 @@ module.exports = function (context, req) {
         };
     }
     else {
-
-
         const audioFile = os.tmpdir() + "\\temp" + Math.floor(Math.random() * 10000000); +".mp3";
 
         var speechkey = req.headers['x-speech-key'];
         var region = "westeurope";
 
-        const defaultSpeechConfig = sdk.SpeechConfig.fromSubscription(speechkey, region);
-        const defaultAudioConfig = sdk.AudioConfig.fromAudioFileOutput(audioFile);
+        const speechConfig = sdk.SpeechConfig.fromSubscription(speechkey, region);
+        const audioConfig = sdk.AudioConfig.fromAudioFileOutput(audioFile);
 
-        defaultSpeechConfig.speechSynthesisVoiceName = "it-IT-LisandroNeural";
-        defaultSpeechConfig.speechSynthesisOutputFormat =  sdk.OutputFormat.Mp3_64Kbps_16kHzMono;
-        defaultSpeechConfig.setProfanity(ProfanityOption.Raw);
+        console.log(voice);
 
-        var defaultSynthesizer = new sdk.SpeechSynthesizer(defaultSpeechConfig, defaultAudioConfig);
+        speechConfig.speechSynthesisVoiceName = voice;
+        speechConfig.speechSynthesisOutputFormat =  sdk.OutputFormat.Mp3_64Kbps_16kHzMono;
+        speechConfig.setProfanity(ProfanityOption.Raw);
 
-        defaultSynthesizer.getVoicesAsync(lang)
-        .then((SynthesisVoicesResult ) => {
-            console.log(SynthesisVoicesResult.voices[0]);
-            const speechConfig = sdk.SpeechConfig.fromSubscription(speechkey, region);
-            const audioConfig = sdk.AudioConfig.fromAudioFileOutput(audioFile);
+        var synthesizer = new sdk.SpeechSynthesizer(speechConfig, audioConfig);
 
-            speechConfig.speechSynthesisVoiceName = SynthesisVoicesResult.voices[0].privShortName;
-            speechConfig.speechSynthesisOutputFormat =  sdk.OutputFormat.Mp3_64Kbps_16kHzMono;
-            speechConfig.setProfanity(ProfanityOption.Raw);
-            // Create the speech synthesizer.
-            var synthesizer = new sdk.SpeechSynthesizer(speechConfig, audioConfig);
-
-            synthesizer.speakTextAsync(text,
-                function (result) {
-            if (result.reason === sdk.ResultReason.SynthesizingAudioCompleted) {
-                console.log("synthesis finished.");
-                result.privAudioData = Buffer.from(result.privAudioData).toString('base64');
-                var audio = {base64audio: result.privAudioData};
+        synthesizer.speakTextAsync(text,
+            function (result) {
+        if (result.reason === sdk.ResultReason.SynthesizingAudioCompleted) {
+            console.log("synthesis finished.");
+            result.privAudioData = Buffer.from(result.privAudioData).toString('base64');
+            var audio = {base64audio: result.privAudioData};
+            context.res = {
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(audio)
+            };
+            console.log(result);
+            context.done();
+        } else {
+            console.error("Speech synthesis canceled, " + result.errorDetails +
+                "\nDid you set the speech resource key and region values?");
                 context.res = {
                     headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(audio)
-                };
-                console.log(result);
-                context.done();
-            } else {
-                console.error("Speech synthesis canceled, " + result.errorDetails +
-                    "\nDid you set the speech resource key and region values?");
-                    context.res = {
-                        headers: {
-                            status: 400,
-                            'Content-Type': 'text/html'
-                        },
-                        body: "Errore nella richiesta"
-                    };
-                    context.done()
-            }
-            synthesizer.close();
-            synthesizer = null;
-            },
-                function (err) {
-                    console.trace("err - " + err);
-                    synthesizer.close();
-                    synthesizer = null;
-                    context.res = {
                         status: 400,
-                        headers: {
-                            'Content-Type': 'text/html'
-                        },
-                        body: "Errore nella richiesta"
-                    };
-                    context.done()
-            })
-        })
-        .catch((err) => {
-            console.log(err);
-            context.res = {
-                status: 400,
-                headers: {
-                    'Content-Type': 'text/html'
-                },
-                body: "Errore nella richiesta"
-            };
-            context.done()
-        }); 
+                        'Content-Type': 'text/html'
+                    },
+                    body: "Errore nella richiesta"
+                };
+                context.done()
+        }
+        synthesizer.close();
+        synthesizer = null;
+        },
+            function (err) {
+                console.trace("err - " + err);
+                synthesizer.close();
+                synthesizer = null;
+                context.res = {
+                    status: 400,
+                    headers: {
+                        'Content-Type': 'text/html'
+                    },
+                    body: "Errore nella richiesta"
+                };
+                context.done()
+        });
 
         
         console.log("Now synthesizing to: " + audioFile);

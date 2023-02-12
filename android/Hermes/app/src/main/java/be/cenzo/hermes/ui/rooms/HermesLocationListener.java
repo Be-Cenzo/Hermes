@@ -7,8 +7,9 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 
 import java.util.ArrayList;
+import java.util.Observable;
 
-public class HermesLocationListener implements LocationListener {
+public class HermesLocationListener extends Observable implements LocationListener {
 
     private Location lastLocation;
     private ArrayList<RoomsFragment> subscribers;
@@ -20,6 +21,8 @@ public class HermesLocationListener implements LocationListener {
     @Override
     public void onLocationChanged(@NonNull Location location) {
         lastLocation = location;
+        setChanged();
+        notifyObservers(lastLocation);
     }
 
     @Override
