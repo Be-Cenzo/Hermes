@@ -1,10 +1,15 @@
 package be.cenzo.hermes;
 
+import android.content.ActivityNotFoundException;
+import android.content.Intent;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.View;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
@@ -23,6 +28,7 @@ import java.io.ObjectInputStream;
 import be.cenzo.hermes.databinding.ActivityMainBinding;
 import be.cenzo.hermes.ui.Profile;
 import be.cenzo.hermes.ui.ProfileCard;
+import be.cenzo.hermes.ui.ProfileController;
 import be.cenzo.hermes.ui.rooms.CreateRoomCard;
 import be.cenzo.hermes.ui.rooms.MapViewModel;
 
@@ -30,13 +36,23 @@ public class MainActivity extends AppCompatActivity {
 
     private ActivityMainBinding binding;
 
-    private Profile profile;
+    private ProfileController profileController;
+    private KeyHandler keyHandler;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         //checkUserData();
+        try {
+            ApplicationInfo app = this.getPackageManager().getApplicationInfo(getPackageName(), PackageManager.GET_META_DATA);
+            Bundle bundle = app.metaData;
+            KeyHandler.createKeyHandler(bundle);
+
+        } catch (Exception e) {
+            Log.d("KEY", "Errore durante il retrieve della chiave");
+            e.printStackTrace();
+        }
 
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
@@ -52,14 +68,6 @@ public class MainActivity extends AppCompatActivity {
         NavigationUI.setupWithNavController(binding.navView, navController);
     }
 
-    public void checkUserData(){
-        profile = Profile.deserialize(getApplicationContext().getFilesDir());
-        if(profile != null)
-            Log.d("deserialization", "" + profile.getNome());
-        else
-            Log.d("deserialization", "fallimento");
-    }
-
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
@@ -71,8 +79,9 @@ public class MainActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.profile:
-                profile = Profile.deserialize(getApplicationContext().getFilesDir());
-                ProfileCard profileCard = new ProfileCard(profile);
+                profileController = ProfileController.getProfileController(getApplicationContext().getFilesDir());
+
+                ProfileCard profileCard = new ProfileCard();
                 profileCard.showPopupWindow(findViewById(R.id.profile));
                 return true;
 
@@ -81,6 +90,5 @@ public class MainActivity extends AppCompatActivity {
 
         }
     }
-
 
 }

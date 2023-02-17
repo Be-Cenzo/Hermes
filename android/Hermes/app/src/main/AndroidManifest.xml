@@ -31,8 +31,6 @@
             </intent-filter>
         </activity>
 
-
-
         <meta-data
             android:name = "mapsKey"
             android:value = "${MAPS_KEY}"/>
@@ -52,6 +50,14 @@
         <meta-data
             android:name = "connString"
             android:value = "${CONN_STRING}"/>
+
+        <meta-data
+            android:name = "chatString"
+            android:value = "${CHAT_STRING}"/>
+
+        <meta-data
+            android:name = "hermesId"
+            android:value = "${HERMES_ID}"/>
     </application>
 
 

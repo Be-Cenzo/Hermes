@@ -65,7 +65,13 @@ resource "azurerm_cognitive_account" "translatorservice" {
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   kind                = "TextTranslation"
-  sku_name = "F0"
+  sku_name            = "F0"
+}
+
+resource "azurerm_communication_service" "communicationservice" {
+  name                = "HermesChat"
+  resource_group_name = azurerm_resource_group.rg.name
+  data_location       = "Europe"
 }
 
 resource "azurerm_maps_account" "maps" {

@@ -19,10 +19,19 @@ public class Profile implements Serializable {
 
     private String nome;
     private String favLang;
+    private String userId;
+    private String token;
 
     public Profile(String nome, String favLang) {
         this.nome = nome;
         this.favLang = favLang;
+    }
+
+    public Profile(String nome, String favLang, String userId, String token) {
+        this.nome = nome;
+        this.favLang = favLang;
+        this.userId = userId;
+        this.token = token;
     }
 
     public String getNome() {
@@ -41,27 +50,34 @@ public class Profile implements Serializable {
         this.favLang = favLang;
     }
 
-    public boolean isValid(){
-        return !nome.isEmpty();
+    public String getUserId() {
+        return userId;
     }
 
-    public static Profile deserialize(File filesDir){
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+
+    public String getToken() {
+        return token;
+    }
+
+    public void setToken(String token) {
+        this.token = token;
+    }
+
+    public boolean isValid(){
+        return !nome.isEmpty() && !userId.isEmpty();
+    }
+
+    public static Profile deserialize(File filesDir) throws Exception{
         File profileFile = new File(filesDir, profileFileName);
-        try {
-            FileInputStream fi = new FileInputStream(profileFile);
-            ObjectInputStream oi = new ObjectInputStream(fi);
-            Profile profile = (Profile)oi.readObject();
-            oi.close();
-            fi.close();
-            return profile;
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        }
-        return null;
+        FileInputStream fi = new FileInputStream(profileFile);
+        ObjectInputStream oi = new ObjectInputStream(fi);
+        Profile profile = (Profile)oi.readObject();
+        oi.close();
+        fi.close();
+        return profile;
     }
 
     public void serialize(File filesDir){

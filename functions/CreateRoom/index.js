@@ -27,10 +27,11 @@ module.exports = async function (context, req) {
     var latitude = parseFloat(context.req.body.latitude);
     var nome = context.req.body.nome;
     var descrizione = context.req.body.descrizione;
+    var threadId = context.req.body.threadId;
 
 
     const result = await db.collection('Rooms').insertOne(
-        {type:"Feature",geometry:{type:"Point",coordinates:[longitude, latitude]},properties:{Name:nome,Description: descrizione}}
+        {type:"Feature",geometry:{type:"Point",coordinates:[longitude, latitude]},properties:{Name:nome,Description: descrizione, threadId: threadId}}
         );
     console.log(result);
 

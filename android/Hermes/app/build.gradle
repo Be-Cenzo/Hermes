@@ -14,6 +14,7 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        minSdkVersion 23
     }
 
     buildTypes {
@@ -28,6 +29,18 @@ android {
     }
     buildFeatures {
         viewBinding true
+    }
+
+    packagingOptions {
+        exclude 'META-INF/DEPENDENCIES'
+        exclude 'META-INF/LICENSE'
+        exclude 'META-INF/license'
+        exclude 'META-INF/NOTICE'
+        exclude 'META-INF/notice'
+        exclude 'META-INF/ASL2.0'
+        exclude("META-INF/*.md")
+        exclude("META-INF/*.txt")
+        exclude("META-INF/*.kotlin_module")
     }
 }
 
@@ -47,4 +60,7 @@ dependencies {
     implementation 'com.squareup.okhttp3:okhttp:4.10.0'
     implementation 'com.google.code.gson:gson:2.10.1'
     implementation 'androidx.cardview:cardview:1.0.0'
+    implementation 'com.azure.android:azure-communication-common:1.1.0'
+    implementation 'com.azure.android:azure-communication-chat:2.0.0'
+    implementation 'org.slf4j:slf4j-log4j12:1.7.29'
 }

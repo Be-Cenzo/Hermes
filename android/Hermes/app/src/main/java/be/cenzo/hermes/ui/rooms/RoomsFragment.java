@@ -5,6 +5,7 @@ import static com.azure.android.maps.control.options.PopupOptions.content;
 import static com.azure.android.maps.control.options.PopupOptions.position;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
@@ -24,6 +25,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
@@ -46,6 +48,7 @@ import com.mapbox.geojson.Point;
 import java.io.IOException;
 import java.net.URISyntaxException;
 
+import be.cenzo.hermes.KeyHandler;
 import be.cenzo.hermes.R;
 import be.cenzo.hermes.databinding.FragmentRoomsBinding;
 import be.cenzo.hermes.ui.translate.TranslateViewModel;
@@ -62,9 +65,7 @@ import okhttp3.ResponseBody;
 
 public class RoomsFragment extends Fragment {
 
-    private String mapsKey;
-    private String funcKey;
-    private String connString;
+    private static final int REQUEST_LOCATION = 1;
 
     private FragmentRoomsBinding binding;
     private MapViewModel mapViewModel;
@@ -93,19 +94,10 @@ public class RoomsFragment extends Fragment {
         Context context = root.getContext();
         userSource = new DataSource();
 
-        try {
-            ApplicationInfo app = getActivity().getPackageManager().getApplicationInfo(context.getPackageName(), PackageManager.GET_META_DATA);
-            Bundle bundle = app.metaData;
-            mapsKey = bundle.getString("mapsKey");
-            funcKey = bundle.getString("funcKey");
-            connString = bundle.getString("connString");
-            mapViewModel.setFuncKey(funcKey);
-            mapViewModel.setConnString(connString);
-            AzureMaps.setSubscriptionKey(mapsKey);
-        } catch (Exception e) {
-            Log.d("KEY", "Errore durante il retrieve della chiave");
-            e.printStackTrace();
-        }
+        AzureMaps.setSubscriptionKey(KeyHandler.getMapsKey());
+
+        mapViewModel.setDir(context.getFilesDir());
+        mapViewModel.initialize();
 
         mapViewModel.getLastLocation().observe(getViewLifecycleOwner(), new Observer<Location>() {
             @Override
@@ -113,6 +105,7 @@ public class RoomsFragment extends Fragment {
                 if(lastLocation != null)
                     userSource.remove(Point.fromLngLat(lastLocation.getLongitude(), lastLocation.getLatitude()));
                 lastLocation = loc;
+                Log.d("LocationChanged", "long: " + mapViewModel.getLastLocation().getValue().getLongitude());
                 userSource.add(Point.fromLngLat(lastLocation.getLongitude(), lastLocation.getLatitude()));
             }
         });
@@ -120,12 +113,14 @@ public class RoomsFragment extends Fragment {
         locationManager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                getActivity().requestPermissions( new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions( new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_LOCATION);
             }
             else{
                 locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 5, mapViewModel.getLocationListener());
                 lastLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                mapViewModel.setLastLocation(lastLocation);
+                Log.d("lastlocation", "lastLocation: " + lastLocation);
 
             }
         }
@@ -149,7 +144,7 @@ public class RoomsFragment extends Fragment {
 
             //Import the geojson data and add it to the data source.
             try {
-                roomsSource.importDataFromUrl("https://hermesapiapp.azurewebsites.net/api/GetRooms?code=" + funcKey + "&str=" + connString);
+                roomsSource.importDataFromUrl("https://hermesapiapp.azurewebsites.net/api/GetRooms?code=" + KeyHandler.getFuncKey() + "&str=" + KeyHandler.getConnString());
             } catch (URISyntaxException e) {
                 e.printStackTrace();
             }
@@ -172,49 +167,16 @@ public class RoomsFragment extends Fragment {
             BubbleLayer layer = new BubbleLayer(userSource);
             map.layers.add(layer);
 
-            //Create a popup and add it to the map.
-            Popup popup = new Popup();
-            map.popups.add(popup);
-
-            //Close it initially.
-            //popup.close();
-
             //Add a click event to the layer.
             map.events.add((OnFeatureClick) (feature) -> {
-                //Get the first feature and it's properties.
+
                 Feature f = feature.get(0);
                 JsonObject props = f.properties();
 
-                //Retrieve the custom layout for the popup.
-                View customView = LayoutInflater.from(root.getContext()).inflate(R.layout.popup_text, null);
+                Room room = new Room(f.getStringProperty("Name"), f.getStringProperty("Description"), f.getStringProperty("threadId"));
 
-                //Display the name and entity type information of the feature into the text view of the popup layout.
-                TextView tv = customView.findViewById(R.id.message);
-                tv.setText("" +
-                        f.getStringProperty("Name") + "\n" +
-                        f.getStringProperty("Description")
-                );
-
-                //Get the position of the clicked feature.
-                Position pos = MapMath.getPosition((Point) f.geometry());
-
-                //Set the options on the popup.
-                popup.setOptions(
-                        //Set the popups position.
-                        position(pos),
-
-                        //Set the anchor point of the popup content.
-                        anchor(AnchorType.BOTTOM),
-
-                        //Set the content of the popup.
-                        content(customView)
-                );
-
-                //Open the popup.
-                popup.open();
-
-
-                //Return a boolean indicating if event should be consumed or continue to bubble up.
+                RoomCard roomCard = new RoomCard(room, mapViewModel);
+                roomCard.showPopupWindow(rootView);
                 return false;
             }, symbolLayer);
         });
@@ -226,12 +188,12 @@ public class RoomsFragment extends Fragment {
         String endpoint = "https://hermesapiapp.azurewebsites.net/api/GetRooms?";
 
         RequestBody formBody = new FormBody.Builder()
-                .add("connString", connString)
+                .add("connString", KeyHandler.getConnString())
                 .build();
 
         Request request = new Request.Builder()
                 .url(endpoint)
-                .addHeader("x-functions-key", funcKey)
+                .addHeader("x-functions-key", KeyHandler.getFuncKey())
                 .post(formBody)
                 .build();
         String rooms = "";
@@ -264,51 +226,6 @@ public class RoomsFragment extends Fragment {
     private void addRoom(View view) {
         CreateRoomCard crc = new CreateRoomCard(mapViewModel);
         crc.showPopupWindow(view);
-        /*String nomeValue = nome.getText().toString();
-        String descrizioneValue = descrizione.getText().toString();
-        String longitude = "" + lastLocation.getLongitude();
-        String latitude = "" + lastLocation.getLatitude();
-
-        Log.d("Bottone", "" + nomeValue);
-
-        String endpoint = "https://hermesapiapp.azurewebsites.net/api/CreateRoom";
-
-        String jsonBody = "{\"connString\": \"" + connString + "\", \"longitude\": \"" + longitude + "\" ,\"latitude\": \"" + latitude + "\" ,\"nome\": \"" + nomeValue + "\" , \"descrizione\": \"" + descrizioneValue + "\"}";
-
-        RequestBody formBody = RequestBody.create(jsonBody, JSON );
-
-        Request request = new Request.Builder()
-                .url(endpoint)
-                .addHeader("x-functions-key", funcKey)
-                .post(formBody)
-                .build();
-
-        String rooms = "";
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(Call call, IOException e) {
-                e.printStackTrace();
-            }
-
-            @Override
-            public void onResponse(Call call, Response response) throws IOException {
-                try (ResponseBody responseBody = response.body()) {
-                    if (!response.isSuccessful())
-                        throw new IOException("Unexpected code " + response);
-
-                    Headers responseHeaders = response.headers();
-                    for (int i = 0, size = responseHeaders.size(); i < size; i++) {
-                        System.out.println(responseHeaders.name(i) + ": " + responseHeaders.value(i));
-                    }
-
-                    String room = responseBody.string();
-                    Log.d("elaboro", "mi è arrivata la risposta: " + room);
-
-
-
-                }
-            }
-        });*/
     }
 
 
@@ -316,6 +233,25 @@ public class RoomsFragment extends Fragment {
         lastLocation = location;
         Log.d("Location:", "long: " + location.getLongitude() + " altitude: " + location.getAltitude());
         Toast.makeText(getActivity(), "long: " + location.getLongitude() + " altitude: " + location.getAltitude(), Toast.LENGTH_SHORT).show();
+    }
+
+    @SuppressLint("MissingPermission")
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String permissions[],
+                                           @NonNull int[] grantResults) {
+        switch (requestCode) {
+            case REQUEST_LOCATION:
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+
+                    locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000, 5, mapViewModel.getLocationListener());
+                    lastLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                    mapViewModel.setLastLocation(lastLocation);
+                } else {
+
+                    Log.d("Permissions", "devi garantire i permessi per farla funzionare");
+
+                }
+        }
     }
 
     @Override
