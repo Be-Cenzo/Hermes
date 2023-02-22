@@ -75,8 +75,6 @@ module.exports = function (context, req) {
 
         
         console.log("Now synthesizing to: " + audioFile);
-
-        //console.log(synthetized);
         
     }
 };

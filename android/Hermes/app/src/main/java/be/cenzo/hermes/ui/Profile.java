@@ -1,15 +1,13 @@
 package be.cenzo.hermes.ui;
 
-import android.util.Log;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.util.Date;
 
 public class Profile implements Serializable {
 
@@ -19,12 +17,15 @@ public class Profile implements Serializable {
 
     private String nome;
     private String favLang;
+    private int radiusValue;
     private String userId;
     private String token;
+    private Date createdToken;
 
-    public Profile(String nome, String favLang) {
+    public Profile(String nome, String favLang, int radiusValue) {
         this.nome = nome;
         this.favLang = favLang;
+        this.radiusValue = radiusValue;
     }
 
     public Profile(String nome, String favLang, String userId, String token) {
@@ -66,8 +67,35 @@ public class Profile implements Serializable {
         this.token = token;
     }
 
+    public Date getCreatedToken() {
+        return createdToken;
+    }
+
+    public void setCreatedToken(Date createdToken) {
+        this.createdToken = createdToken;
+    }
+
+    public int getRadiusValue() {
+        return radiusValue;
+    }
+
+    public void setRadiusValue(int radiusValue) {
+        this.radiusValue = radiusValue;
+    }
+
     public boolean isValid(){
         return !nome.isEmpty() && !userId.isEmpty();
+    }
+
+    public boolean tokenIsValid(){
+        if(token == null || token.isEmpty())
+            return false;
+        if(createdToken == null)
+            return false;
+        Date expirationDate = new Date(createdToken.getTime() + 86400000);
+        if(expirationDate.before(new Date()))
+            return false;
+        return true;
     }
 
     public static Profile deserialize(File filesDir) throws Exception{

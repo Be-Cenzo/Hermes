@@ -51,6 +51,7 @@ public class TranslateViewModel extends ViewModel implements Observer{
     private MutableLiveData<String> editText_1_value;
     private MutableLiveData<String> editText_2_value;
     private MutableLiveData<Language[]> lingue;
+    private MutableLiveData<Integer> stato;
     private Language menu_1_selected;
     private Language menu_2_selected;
 
@@ -82,6 +83,8 @@ public class TranslateViewModel extends ViewModel implements Observer{
         lingue = new MutableLiveData<>();
         //req = new RequestTask(dir, srcLang, dstLang, funcKey, speechKey);
         dir = 0;
+        stato = new MutableLiveData<>();
+        stato.setValue(0);
     }
 
     public void setOutputDir(File outputDir){
@@ -104,6 +107,14 @@ public class TranslateViewModel extends ViewModel implements Observer{
 
     public LiveData<Language[]> getLingueValue() {
         return lingue;
+    }
+
+    public MutableLiveData<Integer> getStato() {
+        return stato;
+    }
+
+    public void setStato(MutableLiveData<Integer> stato) {
+        this.stato = stato;
     }
 
     private void updateEditText(TranslateResults results){
@@ -146,6 +157,7 @@ public class TranslateViewModel extends ViewModel implements Observer{
                     mediaPlayer.prepare();
                     Log.d("elaboro", "faccio play");
                     mediaPlayer.start();
+                    stato.postValue(0);
                 }
             }
             catch (IOException e){
@@ -177,13 +189,10 @@ public class TranslateViewModel extends ViewModel implements Observer{
 
     public void startRecording(int dir){
         this.dir = dir;
-        //outputFilePath = Environment.getExternalStoragePublicDirectory( Environment.DIRECTORY_DOCUMENTS).getAbsolutePath() + "/audio" + new Random().nextInt(100000) + ".wav";
-        //outputFile = new File(outputFilePath);//File.createTempFile("audio", ".wav", outputDir);
         try {
             outputFile = File.createTempFile("audio" + new Random().nextInt(100000), ".wav", outputDir);
             switch (recordTask.getStatus()) {
                 case RUNNING:
-                    //Toast.makeText(this, "Task already running...", Toast.LENGTH_SHORT).show();
                     return;
                 case FINISHED:
                     recordTask = new RecordWaveTask();
@@ -193,8 +202,6 @@ public class TranslateViewModel extends ViewModel implements Observer{
                         recordTask = new RecordWaveTask();
                     }
             }
-            //File wavFile = new File(getFilesDir(), "recording_" + System.currentTimeMillis() / 1000 + ".wav");
-            //Toast.makeText(this, outputFile.getAbsolutePath(), Toast.LENGTH_LONG).show();
             recordTask.execute(outputFile);
         } catch (IOException e) {
             e.printStackTrace();
@@ -203,6 +210,7 @@ public class TranslateViewModel extends ViewModel implements Observer{
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     public void stopRecording(){
+        stato.postValue(1);
         if (!recordTask.isCancelled() && recordTask.getStatus() == AsyncTask.Status.RUNNING) {
             recordTask.cancel(false);
 
@@ -214,17 +222,12 @@ public class TranslateViewModel extends ViewModel implements Observer{
     }
 
     public void cancelExecution(){
+        stato.postValue(0);
         if (!recordTask.isCancelled() && recordTask.getStatus() == AsyncTask.Status.RUNNING) {
             recordTask.cancel(false);
         } else {
             Log.d("Stop", "non era in esecuzione");
         }
-        /*if (req != null){
-            req.cancel(true);
-            req.unsubscribe(this);
-        }
-        req = null;*/
-        //req = new RequestTask(dir, srcLang, dstLang, funcKey, speechKey);
        if (runnableRequestTask != null) {
            runnableRequestTask.cancel();
            runnableRequestTask.deleteObserver(this);
@@ -246,65 +249,6 @@ public class TranslateViewModel extends ViewModel implements Observer{
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     public Boolean uploadFile(String serverURL, File file) {
-        /*try {
-
-            /*RequestBody requestBody = new MultipartBody.Builder().setType(MultipartBody.FORM)
-                    .addFormDataPart("audio", file.getName(),
-                            RequestBody.create(file, MediaType.parse("audio/wav")))
-                    .build();
-            String srcLang = menu_1_selected.getCode();
-            String dstLang = menu_2_selected.getCode();
-            if(dir == 2)
-                srcLang = menu_2_selected.getCode();
-                dstLang = menu_1_selected.getCode();
-
-
-            String requestBody = encodeFileToBase64(file);
-            Log.d("audiowav", requestBody);
-
-            RequestBody requestBodys= new FormBody.Builder()
-                    .add("file", requestBody)
-                    .add("srcLang", srcLang)
-                    .add("dstLang", dstLang)
-                    .build();
-
-            Request request = new Request.Builder()
-                    .url(serverURL)
-                    .addHeader("x-functions-key", funcKey)
-                    .addHeader("x-speech-key", speechKey)
-                    .post(requestBodys)
-                    .build();
-
-            call = client.newCall(request);
-            call.enqueue(new Callback() {
-
-                @Override
-                public void onFailure(final Call call, final IOException e) {
-                    Log.d("Risposta", "errore nella richiesta");
-                }
-
-                @Override
-                public void onResponse(final Call call, final Response response) throws IOException {
-                    if (!response.isSuccessful()) {
-                        Log.d("Risposta", "problemi, problemi");
-                    }
-                    else {
-                        String textValue = response.body().string();
-                        updateEditText(textValue);
-                        Log.d("Risposta", "risposta: " + textValue);
-                    }
-                }
-            });
-
-            return true;
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }*/
-
-
-        /*req.subscribe(this);
-        req.setFile(outputFile);
-        req.execute();*/
         createAndExecuteRunnable();
         return false;
     }
@@ -325,10 +269,6 @@ public class TranslateViewModel extends ViewModel implements Observer{
         ExecutorService executor = Executors.newSingleThreadExecutor();
         executor.execute(runnableRequestTask);
     }
-
-    /*public void getUpdates(){
-        updateEditText(req.getResult());
-    }*/
 
     @Override
     public void update(Observable o, Object arg) {
@@ -362,7 +302,6 @@ public class TranslateViewModel extends ViewModel implements Observer{
                     Gson gson = new Gson();
                     Language[] res = gson.fromJson(textValue, Language[].class);
                     lingue.postValue(res);
-                    //ArrayList<Map<String, String>> map = gson.fromJson(textValue, ArrayList<Map<String, String>>.class);
                     Log.d("Risposta", "risposta: " + res[0].toString());
                 }
             }

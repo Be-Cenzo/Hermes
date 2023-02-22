@@ -22,7 +22,6 @@ public class MessageAdapter extends ArrayAdapter<Messaggio> {
 
     public MessageAdapter(Context context, int resourceId, List<Messaggio> objects) {
         super(context, resourceId, objects);
-        //resource = resourceId;
         inflater = LayoutInflater.from(context);
     }
 
@@ -41,9 +40,6 @@ public class MessageAdapter extends ArrayAdapter<Messaggio> {
         RelativeLayout messageListAdapter = (RelativeLayout) v.findViewById(R.id.messageListAdapter);
 
         RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT);
-
-        //LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) messageContainer.getLayoutParams();
-        //params.a
 
         contentTextView.setText(message.getContenuto());
         displayNameTextView.setText(message.getDisplayName());

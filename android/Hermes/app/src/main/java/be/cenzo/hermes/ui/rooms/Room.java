@@ -2,14 +2,16 @@ package be.cenzo.hermes.ui.rooms;
 
 public class Room {
 
+    private String roomId;
     private String nome;
     private String descrizione;
     private String threadId;
 
-    public Room(String nome, String descrizione, String threadId) {
+    public Room(String nome, String descrizione, String threadId, String roomId) {
         this.nome = nome;
         this.descrizione = descrizione;
         this.threadId = threadId;
+        this.roomId = roomId;
     }
 
     public String getNome() {
@@ -34,5 +36,13 @@ public class Room {
 
     public void setThreadId(String threadId) {
         this.threadId = threadId;
+    }
+
+    public String getRoomId() {
+        return roomId;
+    }
+
+    public void setRoomId(String roomId) {
+        this.roomId = roomId;
     }
 }

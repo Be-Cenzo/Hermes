@@ -4,9 +4,7 @@ import static be.cenzo.hermes.ui.rooms.ApplicationConstants.APPLICATION_ID;
 import static be.cenzo.hermes.ui.rooms.ApplicationConstants.SDK_NAME;
 import static be.cenzo.hermes.ui.rooms.ApplicationConstants.SDK_VERSION;
 
-import android.content.Context;
 import android.location.Location;
-import android.location.LocationManager;
 import android.util.Log;
 
 import androidx.lifecycle.LiveData;
@@ -18,6 +16,7 @@ import com.azure.android.communication.chat.ChatClientBuilder;
 import com.azure.android.communication.common.CommunicationTokenCredential;
 import com.azure.android.core.http.policy.UserAgentPolicy;
 import com.azure.android.maps.control.MapControl;
+import com.azure.android.maps.control.source.DataSource;
 
 import java.io.File;
 import java.util.Observable;
@@ -40,6 +39,7 @@ public class MapViewModel extends ViewModel implements Observer {
 
     private HermesLocationListener locationListener;
 
+    private DataSource roomsSource;
     private Profile profile;
     private ProfileController profileController;
     private ChatAsyncClient chatAsyncClient;
@@ -63,6 +63,9 @@ public class MapViewModel extends ViewModel implements Observer {
                             CommunicationTokenCredential(profile.getToken()))
                     .addPolicy(new UserAgentPolicy(APPLICATION_ID, SDK_NAME, SDK_VERSION))
                     .buildAsyncClient();
+            chatAsyncClient.listChatThreads().forEach((threadItem) -> {
+                Log.d("IscrittoA", "Sei iscritto a questo thread: " + threadItem.getTopic());
+            });
         }
     }
 
@@ -140,6 +143,14 @@ public class MapViewModel extends ViewModel implements Observer {
 
     public void setChatAsyncClient(ChatAsyncClient chatAsyncClient) {
         this.chatAsyncClient = chatAsyncClient;
+    }
+
+    public DataSource getRoomsSource() {
+        return roomsSource;
+    }
+
+    public void setRoomsSource(DataSource roomsSource) {
+        this.roomsSource = roomsSource;
     }
 
     @Override

@@ -29,14 +29,4 @@ public class HermesLocationListener extends Observable implements LocationListen
     public void onProviderDisabled(@NonNull String provider) {
         Log.d("HermesLocationListener", "GPS disabilitato");
     }
-
-    public void subscribe(RoomsFragment subscriber){
-        subscribers.add(subscriber);
-    }
-
-    public void notifySubscribers(){
-        for(RoomsFragment x : subscribers){
-            x.updateLocation(lastLocation);
-        }
-    }
 }

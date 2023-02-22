@@ -24,20 +24,20 @@
                 android:layout_gravity="start"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Nome della room"
                 android:textSize="20sp"
                 android:textStyle="bold"
-                android:padding="10dp"/>
+                android:padding="10dp"
+                android:textColor="?attr/colorOnSecondary"/>
 
             <TextView
                 android:id="@+id/descrizioneroom"
                 android:layout_gravity="start"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Descrizione della room di prova, Nam placerat eros eu ante tristique, at scelerisque ante varius. Nulla non ex accumsan, auctor ex non, consequat mauris."
                 android:textSize="16sp"
                 android:textStyle="bold"
-                android:padding="10dp"/>
+                android:padding="10dp"
+                android:textColor="?attr/colorOnSecondary"/>
 
             <Button
                 android:id="@+id/entraRoomButton"

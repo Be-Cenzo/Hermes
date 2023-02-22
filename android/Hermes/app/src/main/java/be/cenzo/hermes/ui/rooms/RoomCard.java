@@ -80,6 +80,7 @@ public class RoomCard implements Observer {
         popupWindow = new PopupWindow(popupView, width, height, focusable);
 
         //Set the location of the window on the screen
+        popupWindow.setAnimationStyle(R.style.Animation);
         popupWindow.showAtLocation(popupView, Gravity.CENTER, 0, 0);
 
         //Initialize the elements of our window, install the handler
@@ -115,10 +116,6 @@ public class RoomCard implements Observer {
 
                 ChatCard chat = new ChatCard(room, mapViewModel, view);
                 chat.showPopupWindow(view);
-
-
-                // INVIO IL MESSAGGIO DI PROVA
-                // The chat message content, required.
 
                 popupWindow.dismiss();
 

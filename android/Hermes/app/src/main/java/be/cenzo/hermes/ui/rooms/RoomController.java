@@ -11,7 +11,6 @@ import java.util.Observable;
 import be.cenzo.hermes.KeyHandler;
 import okhttp3.Call;
 import okhttp3.Callback;
-import okhttp3.FormBody;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -25,6 +24,7 @@ public class RoomController extends Observable {
 
     private String baseURL = "https://hermesapiapp.azurewebsites.net/api/";
     private String addPartecipantEndpoint = baseURL + "addpartecipanttoroom";
+    private String removePartecipantEndpoint = baseURL + "removepartecipantfromroom";
     private final OkHttpClient client = new OkHttpClient();
     private Call call;
 
@@ -63,6 +63,45 @@ public class RoomController extends Observable {
                 else {
                     String textValue = response.body().string();
                     setResultAndNotify(true);
+                    Log.d("Risposta", "adding partecipant results: " + textValue);
+                }
+            }
+        });
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    public void removePartecipantFromRoom(String userId, String threadId, String roomId){
+
+        String jsonBody = "{\"chatString\": \"" + KeyHandler.getChatString() + "\", \"hermesId\": \"" + KeyHandler.getHermesId() + "\" ,\"userId\": \"" + userId + "\" ,\"connString\": \"" + KeyHandler.getConnString() + "\" , \"threadId\": \"" + threadId + "\", \"roomId\": \"" + roomId + "\"}";
+
+        Log.d("richiesta", jsonBody);
+
+        RequestBody formBody = RequestBody.create(jsonBody, JSON );
+
+        Request request = new Request.Builder()
+                .url(removePartecipantEndpoint)
+                .addHeader("x-functions-key", KeyHandler.getFuncKey())
+                .post(formBody)
+                .build();
+
+        call = client.newCall(request);
+        call.enqueue(new Callback() {
+
+            @Override
+            public void onFailure(final Call call, final IOException e) {
+                Log.d("Risposta", "errore nella richiesta ");
+                //setResultAndNotify(false);
+            }
+
+            @Override
+            public void onResponse(final Call call, final Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    Log.d("Risposta", "problemi, problemi" + response.body().string());
+                    //setResultAndNotify(false);
+                }
+                else {
+                    String textValue = response.body().string();
+                    //setResultAndNotify(true);
                     Log.d("Risposta", "adding partecipant results: " + textValue);
                 }
             }

@@ -7,27 +7,31 @@
 
     <androidx.cardview.widget.CardView
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        app:cardCornerRadius="5dp">
+        android:layout_height="match_parent">
 
         <RelativeLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent">
+            android:layout_height="match_parent"
+            android:background="@drawable/background">
 
             <!-- Header -->
             <LinearLayout
                 android:id="@+id/headerContainer"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="?attr/colorPrimary"
+                android:background="@drawable/chat_title_shape"
                 android:padding="10dp"
                 android:minHeight="48dp"
                 android:orientation="horizontal">
 
                 <Button
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                    android:id="@+id/chatBackButton"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
                     app:icon="@drawable/ic_round_arrow_back_32"
+                    app:iconTint="@color/white"
+                    app:iconGravity="textStart"
+                    app:iconPadding="0dp"
                     android:background="@android:color/transparent"/>
 
                 <TextView
@@ -35,7 +39,9 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Room"
-                    android:textSize="32sp" />
+                    android:textSize="32sp"
+                    android:textColor="@color/white"
+                    android:maxLines="1"/>
             </LinearLayout>
 
             <!-- List Message View -->
@@ -44,11 +50,14 @@
                 android:layout_below="@+id/headerContainer"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:padding="10dp">
+                android:paddingRight="10dp"
+                android:paddingLeft="10dp">
                 <ListView
                     android:id="@+id/messageListView"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"/>
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="68dp"
+                    android:animateLayoutChanges="true"/>
 
             </LinearLayout>
 
@@ -59,26 +68,31 @@
                 android:layout_alignParentBottom="true"
                 android:orientation="horizontal"
                 android:padding="10dp"
-                android:background="@color/lightGray">
+                android:background="@drawable/chat_input_shape">
+
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/inputMessaggio"
-                    android:layout_weight="10"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginRight="32dp"
                     android:hint="Scrivi un messaggio"
-                    android:minHeight="48dp" />
-
-                <Button
-                    android:layout_weight="1"
-                    android:id="@+id/inviaMessaggio"
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
-                    android:background="@android:color/transparent"
-                    app:icon="@drawable/ic_baseline_send_32"
-                    app:iconTint="?attr/colorPrimary"/>
+                    android:minHeight="48dp"/>
 
             </LinearLayout>
+
+            <Button
+                android:layout_margin="10dp"
+                android:id="@+id/inviaMessaggio"
+                android:layout_width="32dp"
+                android:layout_height="48dp"
+                android:layout_alignParentRight="true"
+                android:layout_alignParentBottom="true"
+                android:background="@android:color/transparent"
+                app:icon="@drawable/ic_baseline_send_32"
+                app:iconTint="?attr/colorPrimary"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp" />
 
         </RelativeLayout>
 

@@ -26,7 +26,8 @@
                 android:text="Crea una nuova Room"
                 android:textSize="24sp"
                 android:textStyle="bold"
-                android:padding="10dp"/>
+                android:padding="10dp"
+                android:textColor="?attr/colorOnSecondary"/>
 
             <TextView
                 android:layout_gravity="start"
@@ -35,14 +36,17 @@
                 android:text="Nome"
                 android:textSize="16sp"
                 android:textStyle="bold"
-                android:padding="10dp"/>
+                android:padding="10dp"
+                android:textColor="?attr/colorOnSecondary"/>
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/inputnome"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:hint="Nome"
-                android:padding="15dp"/>
+                android:padding="15dp"
+                android:textColor="?attr/colorOnSecondary"
+                android:textColorHint="?attr/colorOnSecondary"/>
 
             <TextView
                 android:layout_gravity="start"
@@ -52,14 +56,17 @@
                 android:text="Descrizione"
                 android:textSize="16sp"
                 android:textStyle="bold"
-                android:padding="10dp"/>
+                android:padding="10dp"
+                android:textColor="?attr/colorOnSecondary"/>
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/descrizione"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:hint="Descrizione"
-                android:padding="15dp"/>
+                android:padding="15dp"
+                android:textColor="?attr/colorOnSecondary"
+                android:textColorHint="?attr/colorOnSecondary"/>
 
 
             <Button

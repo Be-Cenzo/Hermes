@@ -7,10 +7,8 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
 
-import com.google.android.material.textfield.TextInputEditText;
 
 import be.cenzo.hermes.R;
-import be.cenzo.hermes.ui.Profile;
 import be.cenzo.hermes.ui.ProfileCard;
 
 public class InvalidProfileCard {
@@ -35,6 +33,7 @@ public class InvalidProfileCard {
             final PopupWindow popupWindow = new PopupWindow(popupView, width, height, focusable);
 
             //Set the location of the window on the screen
+            popupWindow.setAnimationStyle(R.style.Animation);
             popupWindow.showAtLocation(view, Gravity.CENTER, 0, 0);
 
             //Initialize the elements of our window, install the handler

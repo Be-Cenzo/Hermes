@@ -1,10 +1,14 @@
 const { MongoClient } = require("mongodb");
 
-
-
-
-module.exports = async function (context, req) {
+module.exports = function (context, req) {
     context.log('JavaScript HTTP trigger function processed a request.');
+
+    let km = parseInt(req.query.km);
+    let long = parseFloat(req.query.long);
+    let lat = parseFloat(req.query.lat);
+
+    km = km*1000;
+    console.log(km);
 
     let connectionString = "";
 
@@ -21,31 +25,55 @@ module.exports = async function (context, req) {
     
     const client = new MongoClient(connectionString);
 
-    await client.connect();
-    
+    client.connect()
+    .then(() => {
 
-    const db = await client.db("Rooms");
+      const collection = client.db("Rooms").collection("Rooms");
 
-    const collection = await db.collection("Rooms");
-
-    const rooms = {
-        "type": "FeatureCollection",
-        "features": []
+      const rooms = {
+          "type": "FeatureCollection",
+          "features": []
+          };
+  
+        
+      collection.createIndex({geometry: "2dsphere"})
+      .then(() =>  {
+        const cursor = collection.find({ "geometry": { $near: {$geometry: { type: "Point", coordinates: [long, lat]}, $maxDistance: km} } } );
+        cursor.forEach((document) => {
+            rooms.features.push(document);
+            console.log(document);
+        })
+        .then(() => {
+          context.res = {
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: rooms
         };
-
-    const cursor = collection.find();
-    await cursor.forEach((document) => {
-        rooms.features.push(document);
-    });
-
-    console.log(rooms);
-
-    context.res = {
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: rooms
-    };
+        
+        context.done();
+        })
+        .catch(() => {
+          context.res = {
+            status: 400
+          };
+          context.done();
+        });
     
-    context.done();
+        console.log(rooms);
+      }).catch(() => {
+        context.res = {
+          status: 400
+        };
+        context.done();
+      });
+
+    })
+    .catch(() => {
+      context.res = {
+        status: 400
+      };
+      context.done();
+    });
+   
 }

@@ -3,6 +3,8 @@ package be.cenzo.hermes.ui.translate;
 import android.Manifest;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.graphics.drawable.AnimatedVectorDrawable;
+import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
@@ -16,6 +18,7 @@ import android.widget.Spinner;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
+import androidx.appcompat.content.res.AppCompatResources;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Observer;
@@ -79,6 +82,9 @@ public class TranslateFragment extends Fragment {
         play_1.setOnClickListener((v) -> startRecording(v));
         play_2.setOnClickListener((v) -> startRecording(v));
 
+        Drawable defaultBackground = play_1.getBackground();
+        AnimatedVectorDrawable caricamento = (AnimatedVectorDrawable) AppCompatResources.getDrawable(root.getContext(), R.drawable.ic_loading_animated);
+
         cancel_1 = (MaterialButton) binding.cancel1;
         cancel_2 = (MaterialButton) binding.cancel2;
         cancel_1.setOnClickListener((v) -> cancelExecution(v));
@@ -125,6 +131,25 @@ public class TranslateFragment extends Fragment {
                 }
             }
         });
+
+        translateViewModel.getStato().observe(getViewLifecycleOwner(), new Observer<Integer>() {
+            @Override
+            public void onChanged(@Nullable Integer stato) {
+                if(stato == 1){
+                    play_1.setBackground(caricamento);
+                    play_2.setBackground(caricamento);
+                    play_1.setIcon(null);
+                    play_2.setIcon(null);
+                    caricamento.start();
+                }
+                if(stato == 0){
+                    caricamento.stop();
+                    play_1.setBackground(defaultBackground);
+                    play_2.setBackground(defaultBackground);
+                    resetListeners();
+                }
+            }
+        });
         return root;
     }
 
@@ -145,7 +170,6 @@ public class TranslateFragment extends Fragment {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (!CheckPermissions()) {
-                //getActivity().requestPermissions( new String[]{Manifest.permission.RECORD_AUDIO}, 1);
                 RequestPermissions();
                 return;
             }
@@ -176,7 +200,6 @@ public class TranslateFragment extends Fragment {
     @RequiresApi(api = Build.VERSION_CODES.O)
     private void stopRecording(View view){
         translateViewModel.stopRecording();
-        resetListeners();
     }
 
     private void cancelExecution(View view){

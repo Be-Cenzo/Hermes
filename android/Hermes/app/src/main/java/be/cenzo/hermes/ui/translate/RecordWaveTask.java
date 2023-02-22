@@ -7,7 +7,6 @@ import android.media.MediaRecorder;
 import android.os.AsyncTask;
 import android.os.SystemClock;
 import android.util.Log;
-import android.widget.Toast;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -16,27 +15,21 @@ import java.io.OutputStream;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.Locale;
 
 public class RecordWaveTask extends AsyncTask<File, Void, Object[]> {
 
-    // Configure me!
     private static final int AUDIO_SOURCE = MediaRecorder.AudioSource.MIC;
     private static final int SAMPLE_RATE = 16000; // Hz
     private static final int ENCODING = AudioFormat.ENCODING_PCM_16BIT;
     private static final int CHANNEL_MASK = AudioFormat.CHANNEL_IN_MONO;
-    //
 
     private static final int BUFFER_SIZE = 2 * AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_MASK, ENCODING);
 
-    //private Context ctx;
 
     public RecordWaveTask() {
-        //setContext(ctx);
     }
 
     private void setContext(Context ctx) {
-        //this.ctx = ctx;
     }
 
     /**
@@ -68,7 +61,6 @@ public class RecordWaveTask extends AsyncTask<File, Void, Object[]> {
             int read;
             long total = 0;
 
-            // Let's go
             startTime = SystemClock.elapsedRealtime();
             audioRecord.startRecording();
             while (run && !isCancelled()) {
@@ -263,19 +255,5 @@ public class RecordWaveTask extends AsyncTask<File, Void, Object[]> {
             throwable = (Throwable) results[0];
             Log.e(RecordWaveTask.class.getSimpleName(), throwable.getMessage(), throwable);
         }
-
-        // If we're attached to an activity
-        /*if (ctx != null) {
-            if (throwable == null) {
-                // Display final recording stats
-                double size = (long) results[0] / 1000000.00;
-                long time = (long) results[1] / 1000;
-                Toast.makeText(ctx, String.format(Locale.getDefault(), "%.2f MB / %d seconds",
-                        size, time), Toast.LENGTH_LONG).show();
-            } else {
-                // Error
-                Toast.makeText(ctx, throwable.getLocalizedMessage(), Toast.LENGTH_LONG).show();
-            }
-        }*/
     }
 }

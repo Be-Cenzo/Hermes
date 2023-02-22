@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<set xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <objectAnimator
+        android:duration="1000"
+        android:propertyName="rotation"
+        android:valueFrom="720"
+        android:valueTo="0"
+        android:repeatMode="reverse"
+        android:repeatCount="@android:integer/config_longAnimTime"/>
+
+</set>

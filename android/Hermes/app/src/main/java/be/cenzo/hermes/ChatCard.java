@@ -9,7 +9,6 @@ import android.os.Looper;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
-import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -24,15 +23,17 @@ import com.azure.android.communication.chat.models.ChatEvent;
 import com.azure.android.communication.chat.models.ChatEventType;
 import com.azure.android.communication.chat.models.ChatMessageReceivedEvent;
 import com.azure.android.communication.chat.models.ChatMessageType;
+import com.azure.android.communication.chat.models.RealTimeNotificationCallback;
 import com.azure.android.communication.chat.models.SendChatMessageOptions;
 import com.azure.android.communication.common.CommunicationTokenCredential;
+import com.azure.android.communication.common.CommunicationUserIdentifier;
 import com.azure.android.core.http.policy.UserAgentPolicy;
 import com.google.android.material.textfield.TextInputEditText;
 
 import java.util.ArrayList;
-import java.util.Observable;
-import java.util.Observer;
 import java.util.concurrent.ExecutionException;
+
+import be.cenzo.hermes.ui.rooms.RoomController;
 
 import be.cenzo.hermes.ui.ProfileController;
 import be.cenzo.hermes.ui.chat.MessageAdapter;
@@ -48,6 +49,7 @@ public class ChatCard {
 
     private ListView messageListView;
     private MessageAdapter messageAdapter;
+    private MessageListener messageListener;
 
     private ChatAsyncClient chatAsyncClient;
     private ChatThreadAsyncClient chatThreadAsyncClient;
@@ -74,17 +76,10 @@ public class ChatCard {
         //Create a window with our parameters
         final PopupWindow popupWindow = new PopupWindow(popupView, width, height, focusable);
 
-        popupWindow.setTouchInterceptor(new View.OnTouchListener() {
-            public boolean onTouch(View v, MotionEvent event) {
-                if (event.getAction() == MotionEvent.ACTION_OUTSIDE) {
-                    v.setFocusable(false);
-                    return true;
-                }
-                return false;
-            }
-        });
+
 
         //Set the location of the window on the screen
+        popupWindow.setAnimationStyle(R.style.chatAnimation);
         popupWindow.showAtLocation(view, Gravity.CENTER, 0, 0);
 
         messageListView = popupView.findViewById(R.id.messageListView);
@@ -101,29 +96,9 @@ public class ChatCard {
 
         chatAsyncClient.startRealtimeNotifications(profileController.getProfile().getToken(), view.getContext());
 
-        chatAsyncClient.addEventHandler(ChatEventType.CHAT_MESSAGE_RECEIVED, (ChatEvent payload) -> {
-            ChatMessageReceivedEvent chatMessageReceivedEvent = (ChatMessageReceivedEvent) payload;
-            // You code to handle chatMessageReceived event
-            String displayName = chatMessageReceivedEvent.getSenderDisplayName();
-            String testo = chatMessageReceivedEvent.getContent();
+        messageListener = new MessageListener(messageAdapter);
 
-            boolean inviato = false;
-            if(chatMessageReceivedEvent.getSender().getRawId().equals(profileController.getProfile().getUserId()))
-                inviato = true;
-
-            Messaggio m = new Messaggio(testo, displayName, inviato);
-
-            Handler mHandler = new Handler(Looper.getMainLooper());
-
-            // anywhere else in your code
-            mHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    messageAdapter.add(m);
-                }
-            });
-            Log.d("Ricevuto", testo);
-        });
+        chatAsyncClient.addEventHandler(ChatEventType.CHAT_MESSAGE_RECEIVED, messageListener);
 
         String endpoint = "https://hermeschat.communication.azure.com/";
 
@@ -134,19 +109,43 @@ public class ChatCard {
                 .chatThreadId(room.getThreadId())
                 .buildAsyncClient();
 
+        Handler handler = new Handler(Looper.getMainLooper());
+        chatThreadAsyncClient.listMessages().forEach((message) -> {
+            Log.d("VecchiMessaggi", "" + message.getSenderDisplayName() + ": " + message.getContent().getMessage() + " " + message.getType());
+            if(message.getType().toString().equals("text")) {
+                Log.d("VecchiMessaggi", "sono dentro");
+                boolean inviato = false;
+                if(message.getSenderCommunicationIdentifier().getRawId().equals(profileController.getProfile().getUserId()))
+                    inviato = true;
+                Log.d("VecchiMessaggi", "metadata: " + message.getMetadata());
+                Messaggio msg = new Messaggio(message.getContent().getMessage(), message.getSenderDisplayName(), inviato);
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        messageAdapter.insert(msg, 0);
+                    }
+                });
+
+                Log.d("VecchiMessaggi", "ho aggiunto il messaggio all'adapter");
+            }
+        });
+
         //Initialize the elements of our window, install the handler
         TextView roomName = popupView.findViewById(R.id.roomName);
         roomName.setText(room.getNome());
 
         TextInputEditText inputText = popupView.findViewById(R.id.inputMessaggio);
 
-        Button buttonEdit = popupView.findViewById(R.id.inviaMessaggio);
+        Button buttonInvia = popupView.findViewById(R.id.inviaMessaggio);
+        Button backButton = popupView.findViewById(R.id.chatBackButton);
 
-        buttonEdit.setOnClickListener(new View.OnClickListener() {
+        buttonInvia.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
 
                 final String content = inputText.getText().toString();
+                if(content.isEmpty() || content.trim().isEmpty())
+                    return;
                 inputText.setText("");
 
                 // The display name of the sender, if null (i.e. not specified), an empty name will be set.
@@ -173,7 +172,9 @@ public class ChatCard {
             }
         });
 
-
+        backButton.setOnClickListener((v) -> {
+            popupWindow.dismiss();
+        });
 
         //Handler for clicking on the inactive zone of the window
 
@@ -183,5 +184,56 @@ public class ChatCard {
             //popupWindow.dismiss();
             return true;
         });
+
+        popupWindow.setOnDismissListener(new PopupWindow.OnDismissListener() {
+            @Override
+            public void onDismiss() {
+                chatThreadAsyncClient.removeParticipant(new CommunicationUserIdentifier(profileController.getProfile().getUserId()));
+                chatAsyncClient.removeEventHandler(ChatEventType.CHAT_MESSAGE_RECEIVED, messageListener);
+                RoomController roomController = new RoomController();
+                roomController.removePartecipantFromRoom(profileController.getProfile().getUserId(), room.getThreadId(), room.getRoomId());
+                Log.d("OnDismiss", "Rimosso il partecipante");
+            }
+        });
+    }
+
+    public class MessageListener implements RealTimeNotificationCallback {
+
+        private MessageAdapter messageAdapter;
+
+        public MessageListener(MessageAdapter messageAdapter){
+            this.messageAdapter = messageAdapter;
+        }
+
+        public void setMessageAdapter(MessageAdapter messageAdapter){
+            this.messageAdapter = messageAdapter;
+        }
+
+        @Override
+        public void onChatEvent(ChatEvent chatEvent) {
+            ChatMessageReceivedEvent chatMessageReceivedEvent = (ChatMessageReceivedEvent) chatEvent;
+            // You code to handle chatMessageReceived event
+            String displayName = chatMessageReceivedEvent.getSenderDisplayName();
+            String testo = chatMessageReceivedEvent.getContent();
+
+            if(!chatMessageReceivedEvent.getChatThreadId().equals(room.getThreadId()))
+                return;
+
+            boolean inviato = false;
+            if(chatMessageReceivedEvent.getSender().getRawId().equals(profileController.getProfile().getUserId()))
+                inviato = true;
+
+            Messaggio m = new Messaggio(testo, displayName, inviato);
+
+            Handler mHandler = new Handler(Looper.getMainLooper());
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    messageAdapter.add(m);
+                }
+            });
+            Log.d("Ricevuto", testo);
+            Log.d("Adapter", " messaggi nell'adapter: " + messageAdapter.getCount());
+        }
     }
 }

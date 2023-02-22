@@ -20,18 +20,50 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent" />
 
-            <Button
-                android:id="@+id/addButton"
-                android:layout_width="40dp"
-                android:layout_height="50dp"
-                android:onClick="addRoom"
-                android:text="+"
-                android:textSize="16sp"
-                app:cornerRadius="50px"
-                android:layout_alignParentBottom="true"
-                android:layout_alignParentRight="true"
-                android:layout_marginRight="16dp"
-                android:layout_marginBottom="16dp"/>
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_alignParentBottom="true">
+
+                <RelativeLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <Button
+                        android:id="@+id/addButton"
+                        android:layout_width="50dp"
+                        android:layout_height="60dp"
+                        android:layout_alignParentRight="true"
+                        android:layout_marginRight="24dp"
+                        android:layout_marginBottom="24dp"
+                        android:onClick="addRoom"
+                        android:text="+"
+                        android:textSize="16sp"
+                        app:cornerRadius="50dp" />
+
+                </RelativeLayout>
+
+                <RelativeLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <Button
+                        android:id="@+id/refreshButton"
+                        android:layout_width="50dp"
+                        android:layout_height="60dp"
+                        android:layout_marginLeft="24dp"
+                        android:layout_marginBottom="24dp"
+                        android:onClick="refreshRooms"
+                        android:textSize="16sp"
+                        app:cornerRadius="50dp"
+                        app:icon="@drawable/ic_baseline_refresh_32"
+                        app:iconGravity="textStart"
+                        app:iconPadding="0dp"/>
+
+                </RelativeLayout>
+
+            </RelativeLayout>
+
 
         </RelativeLayout>
 

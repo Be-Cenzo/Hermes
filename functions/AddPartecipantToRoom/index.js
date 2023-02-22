@@ -16,30 +16,22 @@ module.exports = async function (context, req) {
     console.log(userId);
     console.log(connectionString);
     console.log(threadId);
-        
-    // Your unique Azure Communication service endpoint
+    
     let endpointUrl = 'https://hermeschat.communication.azure.com/';
-    // The user access token generated as part of the pre-requisites
 
     let tokenClient = new CommunicationIdentityClient(connectionString);
-    //let hermesIDHolder = await tokenClient.createUser(hermesId);
     let hermesAccessToken = (await tokenClient.getToken({communicationUserId: hermesId}, ["chat"])).token;
-
-    //console.log(hermesIDHolder.communicationUserId);
 
     let credential = new AzureCommunicationTokenCredential(hermesAccessToken);
 
-    //console.log(credential);
     let chatClient = new ChatClient(endpointUrl, credential);
     let threads = chatClient.listChatThreads();
-    /*console.log('Azure Communication Chat client created!');
-    for await (let thread of threads) {
-        console.log(thread);
-     }*/
 
-    console.log("Kitammuort");
     let chatThreadClient = chatClient.getChatThreadClient(threadId);
     console.log(chatThreadClient);
+    for await (let partecipant of chatThreadClient.listParticipants()){
+        console.log(partecipant);
+    }
     const addParticipantsRequest =
     {
     participants: [

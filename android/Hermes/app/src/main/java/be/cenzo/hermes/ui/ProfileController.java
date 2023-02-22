@@ -6,13 +6,14 @@ import com.google.gson.Gson;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Date;
 import java.util.Map;
 import java.util.Observable;
 
 import be.cenzo.hermes.KeyHandler;
+import be.cenzo.hermes.ui.rooms.MapViewModel;
 import okhttp3.Call;
 import okhttp3.Callback;
-import okhttp3.Headers;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -33,6 +34,7 @@ public class ProfileController extends Observable {
     private static ProfileController profileController;
     private KeyHandler keyHandler;
     private int stato;
+    private MapViewModel mapViewModel;
 
     private final OkHttpClient client = new OkHttpClient();
 
@@ -48,7 +50,7 @@ public class ProfileController extends Observable {
         try {
             this.profile = Profile.deserialize(dir);
         } catch (Exception e) {
-            this.profile = new Profile(null, null);
+            this.profile = new Profile(null, null, 30);
             profile.serialize(dir);
         }
         this.stato = PRONTO;
@@ -58,31 +60,38 @@ public class ProfileController extends Observable {
     public boolean isValid(){
         if(profile == null)
             return false;
-        if(profile.getUserId() == null || profile.getNome().isEmpty())
+        if(profile.getNome() == null || profile.getNome().isEmpty() || profile.getNome().trim().isEmpty())
             return false;
         if(profile.getUserId() == null || profile.getUserId().isEmpty()){
             Log.d("profilo", "userId: " + profile.getUserId());
             creaToken();
             return false;
         }
-        if(profile.getToken() == null ||profile.getToken().isEmpty()){
-            // TODO: refreshToken()
+        if(!getProfile().tokenIsValid()){
+            Log.d("Token", "Il token non è valido");
+            creaToken();
             return false;
         }
+        Log.d("Token", "Il token è valido");
         return true;
     }
 
-    public Profile createProfile(String name, String favLang){
-        profile = new Profile(name, favLang);
+    public Profile createProfile(String name, String favLang, int radiusValue){
+        profile = new Profile(name, favLang, radiusValue);
         creaToken();
         return profile;
     }
 
     public void creaToken(){
+        profile.setCreatedToken(new Date());
         String endpoint = "https://hermesapiapp.azurewebsites.net/api/getToken";
+        String userId = profile.getUserId();
 
         String jsonBody = "{\"connString\": \"" + keyHandler.getChatString() + "\"}";
-        Log.d("CreazioneRichiesta", "connString:" + keyHandler.getChatString());
+        if(userId != null && !userId.isEmpty())
+            jsonBody = "{\"connString\": \"" + keyHandler.getChatString() + "\", \"userId\": \"" + userId + "\"}";
+
+        Log.d("CreazioneRichiesta", "jsonBody:" + jsonBody);
 
         RequestBody formBody = RequestBody.create(jsonBody, JSON );
 
@@ -96,6 +105,7 @@ public class ProfileController extends Observable {
             @Override
             public void onFailure(Call call, IOException e) {
                 Log.d("Risposta", "Errore");
+                profile.setCreatedToken(null);
                 e.printStackTrace();
             }
 
@@ -104,6 +114,7 @@ public class ProfileController extends Observable {
                 try (ResponseBody responseBody = response.body()) {
                     if (!response.isSuccessful()) {
                         Log.d("Risposta", "Errore nella risposta");
+                        profile.setCreatedToken(null);
                         throw new IOException("Unexpected code " + response);
                     }
 
@@ -125,14 +136,23 @@ public class ProfileController extends Observable {
         return profile;
     }
 
+    public MapViewModel getMapViewModel() {
+        return mapViewModel;
+    }
+
+    public void setMapViewModel(MapViewModel mapViewModel) {
+        this.mapViewModel = mapViewModel;
+    }
+
     public void serialize(){
         profile.serialize(dir);
         Log.d("Serializzazione", "userId: " + profile.getUserId());
     }
 
-    public void updateProfile(String nomeTextValue, String favlangTextValue) {
+    public void updateProfile(String nomeTextValue, String favlangTextValue, int radiusValue){
         profile.setNome(nomeTextValue);
         profile.setFavLang(favlangTextValue);
+        profile.setRadiusValue(radiusValue);
         saveProfile();
     }
 

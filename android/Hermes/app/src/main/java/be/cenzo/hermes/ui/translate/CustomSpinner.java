@@ -66,10 +66,9 @@ public class CustomSpinner extends androidx.appcompat.widget.AppCompatSpinner {
 
         WindowManager.LayoutParams WMLP = mPopup.getWindow().getAttributes();
 
-        //width and height must be set to anything other than WRAP_CONTENT!
         WMLP.x = 0; // x position
         WMLP.y = 0; // y position
-        WMLP.height = WindowManager.LayoutParams.WRAP_CONTENT ; //LayoutParams.WRAP_CONTEN
+        WMLP.height = WindowManager.LayoutParams.WRAP_CONTENT ;
         WMLP.width = WindowManager.LayoutParams.WRAP_CONTENT;
         WMLP.horizontalMargin = 0;
         WMLP.verticalMargin = 0;
@@ -78,9 +77,7 @@ public class CustomSpinner extends androidx.appcompat.widget.AppCompatSpinner {
 
 
 
-        //ListView.getDefaultSize(size, measureSpec)
         ListView listView = mPopup.getListView();
-        //listView.set
         // Remove divider between rows
         listView.setDivider(null);
 

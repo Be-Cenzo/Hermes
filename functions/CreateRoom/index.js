@@ -1,4 +1,5 @@
 const { MongoClient } = require("mongodb");
+const { v4: uuidv4 } = require('uuid');
 
 module.exports = async function (context, req) {
     context.log('JavaScript HTTP trigger function processed a request.');
@@ -28,14 +29,14 @@ module.exports = async function (context, req) {
     var nome = context.req.body.nome;
     var descrizione = context.req.body.descrizione;
     var threadId = context.req.body.threadId;
-
+    var roomId = uuidv4().toString();
 
     const result = await db.collection('Rooms').insertOne(
-        {type:"Feature",geometry:{type:"Point",coordinates:[longitude, latitude]},properties:{Name:nome,Description: descrizione, threadId: threadId}}
+        {_id: roomId, type:"Feature",geometry:{type:"Point",coordinates:[longitude, latitude]},properties:{Name:nome,Description: descrizione, threadId: threadId, roomId: roomId}}
         );
     console.log(result);
 
     context.res = {
-        body: "ok"
+        body: roomId
     };
 }

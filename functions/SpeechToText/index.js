@@ -38,13 +38,6 @@ module.exports = function (context, req) {
 
         let speechRecognizer = new sdk.SpeechRecognizer(speechConfig, audioConfig);
 
-        /*let buf = fs.readFileSync(tempFile);
-        let i = 0;
-        for(i = 0; i<50; i++){
-            console.log(buf[i]);
-            if(i === 43)
-                console.log("finito l'header");
-        }*/
         console.log("Esecuzione");
 
         speechRecognizer.recognizeOnceAsync(result => {

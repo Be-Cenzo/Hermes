@@ -26,7 +26,8 @@
                 android:text="Attenzione"
                 android:textSize="24sp"
                 android:textStyle="bold"
-                android:padding="10dp"/>
+                android:padding="10dp"
+                android:textColor="?attr/colorOnSecondary"/>
 
             <TextView
                 android:layout_gravity="start"
@@ -35,7 +36,8 @@
                 android:text="Ricorda che prima devi configurare il tuo profilo."
                 android:textSize="16sp"
                 android:textStyle="bold"
-                android:padding="10dp"/>
+                android:padding="10dp"
+                android:textColor="?attr/colorOnSecondary"/>
 
 
             <Button

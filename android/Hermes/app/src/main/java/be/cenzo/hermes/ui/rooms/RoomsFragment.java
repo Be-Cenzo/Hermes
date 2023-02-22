@@ -1,13 +1,10 @@
 package be.cenzo.hermes.ui.rooms;
 
-import static com.azure.android.maps.control.options.PopupOptions.anchor;
-import static com.azure.android.maps.control.options.PopupOptions.content;
-import static com.azure.android.maps.control.options.PopupOptions.position;
+import static com.azure.android.maps.control.options.SymbolLayerOptions.iconImage;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationManager;
@@ -17,28 +14,25 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.animation.Animation;
 import android.widget.Button;
-import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 
+import com.azure.android.maps.control.AzureMap;
 import com.azure.android.maps.control.AzureMaps;
 import com.azure.android.maps.control.MapControl;
-import com.azure.android.maps.control.MapMath;
-import com.azure.android.maps.control.Popup;
-import com.azure.android.maps.control.data.Position;
 import com.azure.android.maps.control.events.OnFeatureClick;
 import com.azure.android.maps.control.layer.BubbleLayer;
 import com.azure.android.maps.control.layer.SymbolLayer;
-import com.azure.android.maps.control.options.AnchorType;
+import com.azure.android.maps.control.options.AnimationOptions;
+import com.azure.android.maps.control.options.CameraOptions;
+import com.azure.android.maps.control.options.Option;
+import com.azure.android.maps.control.options.SymbolLayerOptions;
 import com.azure.android.maps.control.source.DataSource;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.gson.JsonObject;
@@ -47,16 +41,16 @@ import com.mapbox.geojson.Point;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.Map;
 
 import be.cenzo.hermes.KeyHandler;
 import be.cenzo.hermes.R;
 import be.cenzo.hermes.databinding.FragmentRoomsBinding;
-import be.cenzo.hermes.ui.translate.TranslateViewModel;
+import be.cenzo.hermes.ui.ProfileController;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.FormBody;
 import okhttp3.Headers;
-import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
@@ -73,10 +67,14 @@ public class RoomsFragment extends Fragment {
     private DataSource roomsSource;
     private DataSource userSource;
 
+    private AzureMap map;
     private MapControl mapControl;
     private Button add;
+    private Button refresh;
     private TextInputEditText nome;
     private TextInputEditText descrizione;
+
+    private ProfileController profileController;
 
     private final OkHttpClient client = new OkHttpClient();
 
@@ -93,6 +91,7 @@ public class RoomsFragment extends Fragment {
         View root = binding.getRoot();
         Context context = root.getContext();
         userSource = new DataSource();
+        roomsSource = new DataSource();
 
         AzureMaps.setSubscriptionKey(KeyHandler.getMapsKey());
 
@@ -103,12 +102,19 @@ public class RoomsFragment extends Fragment {
             @Override
             public void onChanged(@Nullable Location loc) {
                 if(lastLocation != null)
-                    userSource.remove(Point.fromLngLat(lastLocation.getLongitude(), lastLocation.getLatitude()));
-                lastLocation = loc;
-                Log.d("LocationChanged", "long: " + mapViewModel.getLastLocation().getValue().getLongitude());
-                userSource.add(Point.fromLngLat(lastLocation.getLongitude(), lastLocation.getLatitude()));
+                    userSource.clear();
+                if(loc != null) {
+                    lastLocation = loc;
+                    userSource.add(Point.fromLngLat(lastLocation.getLongitude(), lastLocation.getLatitude()));
+                    refreshRooms();
+                    refreshCamera();
+                }
             }
         });
+
+        profileController = ProfileController.getProfileController(mapViewModel.getDir());
+        profileController.setMapViewModel(mapViewModel);
+        mapViewModel.setRoomsSource(roomsSource);
 
         locationManager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
 
@@ -132,21 +138,44 @@ public class RoomsFragment extends Fragment {
 
         add.setOnClickListener((view) -> {addRoom(view);});
 
-        //getRooms();
+        refresh = (Button) root.findViewById(R.id.refreshButton);
+
+        refresh.setOnClickListener((view) -> {refreshRooms(view);});
 
         //Wait until the map resources are ready.
         mapControl.onReady(map -> {
+            this.map = map;
+            map.images.add("marker", R.drawable.marker);
 
-            //Create a data source and add it to the map.
-            roomsSource = new DataSource();
+            if(lastLocation != null) {
+                double longitude = lastLocation.getLongitude();
+                double latitude = lastLocation.getLatitude();
+                int km = profileController.getProfile().getRadiusValue();
 
-            //getRooms();
+                CameraOptions opts = new CameraOptions();
+                opts.center.setLongitude(longitude);
+                opts.center.setLatitude(latitude);
+                opts.zoom = 10.0;
+                Log.d("Camera", "length " + opts.asOptions().length);
+                AnimationOptions animationOptions = new AnimationOptions();
+                Option<String> animOpt = new Option<String>("type", "fly");
+                Option<Integer> animOpt2 = new Option<Integer>("duration", 1000);
+                Option[] options = new Option[9];
+                options[0] = animOpt;
+                options[1] = animOpt2;
+                int count = 2;
+                for (Option singleOpt : opts.asOptions()) {
+                    options[count] = singleOpt;
+                    count++;
+                }
+                map.setCamera(options);
 
-            //Import the geojson data and add it to the data source.
-            try {
-                roomsSource.importDataFromUrl("https://hermesapiapp.azurewebsites.net/api/GetRooms?code=" + KeyHandler.getFuncKey() + "&str=" + KeyHandler.getConnString());
-            } catch (URISyntaxException e) {
-                e.printStackTrace();
+                //Import the geojson data and add it to the data source.
+                try {
+                    roomsSource.importDataFromUrl("https://hermesapiapp.azurewebsites.net/api/GetRooms?code=" + KeyHandler.getFuncKey() + "&str=" + KeyHandler.getConnString() + "&km=" + km + "&long=" + longitude + "&lat=" + latitude);
+                } catch (URISyntaxException e) {
+                    e.printStackTrace();
+                }
             }
             //Add data source to the map.
             map.sources.add(roomsSource);
@@ -160,11 +189,19 @@ public class RoomsFragment extends Fragment {
             }
 
             //Create a layer and add it to the map.
-            SymbolLayer symbolLayer = new SymbolLayer(roomsSource);
+            SymbolLayer symbolLayer = new SymbolLayer(roomsSource, iconImage("marker"), SymbolLayerOptions.iconAllowOverlap(true), SymbolLayerOptions.iconSize(0.5f));
             map.layers.add(symbolLayer);
 
             // layer dell'utente
             BubbleLayer layer = new BubbleLayer(userSource);
+            Option<String> opt0 = new Option<String>("bubbleColor", "#62c9e5");
+            Option<String> opt1 = new Option<String>("bubbleStrokeColor", "#e8f7fb");
+            Option<Float> opt2 = new Option<Float>("bubbleStrokeOpacity", 0.35f);
+            Option<Float> opt3 = new Option<Float>("bubbleStrokeWidth", 5.0f);
+            for(Map.Entry<String, Option> opt :  layer.opts.a.a.entrySet()){
+                Log.d("Camera", " " + opt.getKey() + " " + opt.getValue().getValue());
+            }
+            layer.setOptions(opt0, opt1, opt2, opt3);
             map.layers.add(layer);
 
             //Add a click event to the layer.
@@ -173,7 +210,8 @@ public class RoomsFragment extends Fragment {
                 Feature f = feature.get(0);
                 JsonObject props = f.properties();
 
-                Room room = new Room(f.getStringProperty("Name"), f.getStringProperty("Description"), f.getStringProperty("threadId"));
+                Room room = new Room(f.getStringProperty("Name"), f.getStringProperty("Description"), f.getStringProperty("threadId"), f.getStringProperty("roomId"));
+                Log.d("IdRooms", "id: " + f.getStringProperty("_id"));
 
                 RoomCard roomCard = new RoomCard(room, mapViewModel);
                 roomCard.showPopupWindow(rootView);
@@ -224,15 +262,48 @@ public class RoomsFragment extends Fragment {
     }
 
     private void addRoom(View view) {
-        CreateRoomCard crc = new CreateRoomCard(mapViewModel);
+        CreateRoomCard crc = new CreateRoomCard(mapViewModel, roomsSource);
         crc.showPopupWindow(view);
     }
 
+    private void refreshRooms(View view){
+        refreshRooms();
+    }
 
-    public void updateLocation(Location location){
-        lastLocation = location;
-        Log.d("Location:", "long: " + location.getLongitude() + " altitude: " + location.getAltitude());
-        Toast.makeText(getActivity(), "long: " + location.getLongitude() + " altitude: " + location.getAltitude(), Toast.LENGTH_SHORT).show();
+    private void refreshRooms(){
+        double longitude = lastLocation.getLongitude();
+        double latitude = lastLocation.getLatitude();
+        int km = profileController.getProfile().getRadiusValue();
+        Log.d("RefreshRooms", "aggiorno le room con km: " + km + " long: " + longitude + " lat: " + latitude);
+        try {
+            roomsSource.importDataFromUrl("https://hermesapiapp.azurewebsites.net/api/GetRooms?code=" + KeyHandler.getFuncKey() + "&str=" + KeyHandler.getConnString() + "&km=" + km + "&long=" + longitude + "&lat=" + latitude);
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void refreshCamera(){
+        double longitude = lastLocation.getLongitude();
+        double latitude = lastLocation.getLatitude();
+
+        CameraOptions opts = new CameraOptions();
+        opts.center.setLongitude(longitude);
+        opts.center.setLatitude(latitude);
+        opts.zoom = 10.0;
+        Log.d("Camera", "length " + opts.asOptions().length);
+        AnimationOptions animationOptions = new AnimationOptions();
+        Option<String> animOpt = new Option<String>("type", "fly");
+        Option<Integer> animOpt2 = new Option<Integer>("duration", 1000);
+        Option[] options = new Option[9];
+        options[0] = animOpt;
+        options[1] = animOpt2;
+        int count = 2;
+        for (Option singleOpt : opts.asOptions()){
+            options[count] = singleOpt;
+            count++;
+        }
+        if(map != null)
+            map.setCamera(options);
     }
 
     @SuppressLint("MissingPermission")
@@ -258,6 +329,7 @@ public class RoomsFragment extends Fragment {
     public void onDestroyView() {
         super.onDestroyView();
         binding = null;
+        profileController.setMapViewModel(null);
     }
 
     @Override

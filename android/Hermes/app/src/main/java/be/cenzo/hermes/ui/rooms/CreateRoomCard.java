@@ -5,6 +5,8 @@ import static be.cenzo.hermes.ui.rooms.ApplicationConstants.SDK_NAME;
 import static be.cenzo.hermes.ui.rooms.ApplicationConstants.SDK_VERSION;
 
 import android.location.Location;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -17,17 +19,20 @@ import com.azure.android.communication.chat.models.ChatParticipant;
 import com.azure.android.communication.common.CommunicationUserIdentifier;
 import com.azure.android.core.http.policy.UserAgentPolicy;
 import com.azure.android.core.rest.util.paging.PagedAsyncStream;
+import com.azure.android.maps.control.source.DataSource;
 import com.google.android.material.textfield.TextInputEditText;
 
 import com.azure.android.communication.chat.*;
 import com.azure.android.communication.chat.models.*;
 import com.azure.android.communication.common.*;
+import com.google.gson.JsonObject;
+import com.mapbox.geojson.Feature;
+import com.mapbox.geojson.Geometry;
+import com.mapbox.geojson.Point;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Observable;
-import java.util.Observer;
 import java.util.concurrent.ExecutionException;
 
 import be.cenzo.hermes.KeyHandler;
@@ -54,13 +59,15 @@ public class CreateRoomCard {
     private MapViewModel mapViewModel;
     private KeyHandler keyHandler;
     private ProfileController profileController;
+    private DataSource roomsSource;
 
     private final OkHttpClient client = new OkHttpClient();
 
-    public CreateRoomCard(MapViewModel mapViewModel){
+    public CreateRoomCard(MapViewModel mapViewModel, DataSource roomsSource){
         this.mapViewModel = mapViewModel;
         keyHandler = KeyHandler.getKeyHandler();
         this.profileController = ProfileController.getProfileController(mapViewModel.getDir());
+        this.roomsSource = roomsSource;
     }
 
     public void showPopupWindow(final View view) {
@@ -83,6 +90,7 @@ public class CreateRoomCard {
         final PopupWindow popupWindow = new PopupWindow(popupView, width, height, focusable);
 
         //Set the location of the window on the screen
+        popupWindow.setAnimationStyle(R.style.Animation);
         popupWindow.showAtLocation(view, Gravity.CENTER, 0, 0);
 
         //Initialize the elements of our window, install the handler
@@ -99,8 +107,10 @@ public class CreateRoomCard {
                 String longitude = "" + lastLocation.getLongitude();
                 String latitude = "" + lastLocation.getLatitude();
 
+                if(nomeRoom == null || nomeRoom.isEmpty() || nomeRoom.trim().isEmpty())
+                    return;
+
                 // creazione del thread della chat
-                //profileController = mapViewModel.getProfileController();
                 if(!profileController.isValid()){
                     Log.d("CreateRoomClick", "devi prima configurare il tuo profilo");
                     InvalidProfileCard invalidProfileCard = new InvalidProfileCard();
@@ -143,7 +153,7 @@ public class CreateRoomCard {
 
                 ChatThreadAsyncClient chatThreadAsyncClient = new ChatThreadClientBuilder()
                         .endpoint(chat)
-                        .credential(new CommunicationTokenCredential(profileController.getProfile().getToken()))
+                        .credential(new CommunicationTokenCredential(currentProfile.getToken()))
                         .addPolicy(new UserAgentPolicy(APPLICATION_ID, SDK_NAME, SDK_VERSION))
                         .chatThreadId(threadId)
                         .buildAsyncClient();
@@ -152,6 +162,8 @@ public class CreateRoomCard {
                 part.forEach(partecipant -> {
                    Log.d("Partecipanti", "Partecipanti: " + partecipant.getDisplayName() + " " + partecipant.getCommunicationIdentifier().getRawId() );
                 });
+
+                chatThreadAsyncClient.removeParticipant(new CommunicationUserIdentifier(currentProfile.getUserId()));
 
                 String endpoint = "https://hermesapiapp.azurewebsites.net/api/CreateRoom";
 
@@ -184,9 +196,20 @@ public class CreateRoomCard {
 
                             String room = responseBody.string();
                             Log.d("elaboro", "mi è arrivata la risposta: " + room);
-
-
-
+                            Geometry point = Point.fromLngLat(lastLocation.getLongitude(), lastLocation.getLatitude());
+                            JsonObject props = new JsonObject();
+                            props.addProperty("Name", nomeRoom);
+                            props.addProperty("Description", descrizioneRoom);
+                            props.addProperty("threadId", threadId);
+                            props.addProperty("roomId", room);
+                            Feature createdRoom = Feature.fromGeometry(point, props, room);
+                            Handler mHandler = new Handler(Looper.getMainLooper());
+                            mHandler.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    roomsSource.add(createdRoom);
+                                }
+                            });
                         }
                     }
                 });
@@ -206,5 +229,6 @@ public class CreateRoomCard {
             popupWindow.dismiss();
             return true;
         });
+
     }
 }
